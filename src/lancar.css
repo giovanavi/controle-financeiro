@@ -1,0 +1,79 @@
+.segmentos {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.segmentos button {
+  flex: 1;
+  padding: 8px 6px;
+  background: transparent;
+  color: var(--text-2);
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.segmentos button.ativo { background: var(--primary); color: var(--on-primary); }
+.segmentos.pequeno button { padding: 6px 10px; font-size: 13px; }
+
+.campo select {
+  padding: 10px 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 16px;
+}
+.campo select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+.mini {
+  width: 110px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 16px;
+  text-align: right;
+}
+.mini:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.par { display: flex; align-items: center; gap: 8px; }
+.par .valor-calculado { min-width: 84px; text-align: right; font-size: 13px; color: var(--text-2); }
+
+.cabecalho-secao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.aviso {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.sucesso {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: var(--ok-bg);
+  color: var(--ok-text);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.dica { margin: 0; font-size: 13px; color: var(--text-2); }
+.confere { margin: 8px 0 0; font-size: 13px; color: var(--ok-text); }

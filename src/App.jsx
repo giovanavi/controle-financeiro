@@ -7,6 +7,7 @@ import Pagina from './pages/Pagina'
 import Pessoas from './pages/Pessoas'
 import Cartoes from './pages/Cartoes'
 import Categorias from './pages/Categorias'
+import Lancar from './pages/Lancar'
 
 export default function App() {
   // undefined = ainda verificando; null = sem login; objeto = logado
@@ -33,7 +34,7 @@ export default function App() {
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/pessoas" element={<Pessoas />} />
         <Route path="/categorias" element={<Categorias />} />
-        <Route path="/lancar" element={<Pagina titulo="Lançar despesa" />} />
+        <Route path="/lancar" element={<Lancar />} />
         <Route path="/fixos" element={<Pagina titulo="Gastos fixos" />} />
         <Route path="/extras" element={<Pagina titulo="Extras" />} />
         <Route path="*" element={<Navigate to="/resumo" replace />} />
