@@ -18,9 +18,6 @@ export default function Login() {
     })
 
     if (error) {
-      console.error('Erro de login:', error)
-      console.log('URL carregada:', import.meta.env.VITE_SUPABASE_URL)
-      console.log('Chave carregada:', !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
       const credenciaisErradas = error.message?.includes('Invalid login credentials')
       setErro(
         credenciaisErradas

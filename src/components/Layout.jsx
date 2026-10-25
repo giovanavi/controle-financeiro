@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { House, CreditCard, Users, Plus, Repeat, Sparkles, LogOut } from 'lucide-react'
+import { House, CreditCard, Users, Plus, Repeat, Sparkles, Tag, LogOut } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import '../cadastros.css'
 
 const itensPrincipais = [
   { para: '/resumo', rotulo: 'Resumo', Icone: House },
@@ -12,6 +13,7 @@ const itensPrincipais = [
 const itensSecundarios = [
   { para: '/fixos', rotulo: 'Gastos fixos', Icone: Repeat },
   { para: '/extras', rotulo: 'Extras', Icone: Sparkles },
+  { para: '/categorias', rotulo: 'Categorias', Icone: Tag },
 ]
 
 const classeDoItem = ({ isActive }) => (isActive ? 'item ativo' : 'item')
@@ -47,12 +49,17 @@ export default function Layout() {
       </aside>
 
       <div className="conteudo">
-        {/* Celular: topo com botão de sair */}
+        {/* Celular: topo com atalho de categorias e botão de sair */}
         <header className="topo-mobile">
           <span>Controle financeiro</span>
-          <button className="botao-sair" onClick={sair} aria-label="Sair">
-            <LogOut size={20} aria-hidden="true" />
-          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <NavLink to="/categorias" className="botao-sair" aria-label="Categorias">
+              <Tag size={20} aria-hidden="true" />
+            </NavLink>
+            <button className="botao-sair" onClick={sair} aria-label="Sair">
+              <LogOut size={20} aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         <main>

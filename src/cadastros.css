@@ -1,0 +1,93 @@
+.cabecalho-pagina {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cabecalho-pagina h1 { margin: 0; }
+
+.bloco {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.bloco p { margin: 0 0 12px; }
+
+.formulario { display: grid; gap: 12px; }
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.campo input,
+.campo textarea {
+  padding: 10px 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 16px;
+}
+.campo input:focus-visible,
+.campo textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.duas-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.botao-primario.pequeno { padding: 8px 14px; font-size: 14px; }
+
+.botao-secundario {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.botao-secundario:hover { background: var(--bg); }
+.botao-secundario.perigo { color: var(--danger-text); }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.linha:first-child { border-top: none; }
+.linha .titulo { font-weight: 500; }
+.linha .detalhe { font-size: 13px; color: var(--text-2); }
+.linha.desativada .titulo { color: var(--text-2); }
+
+.chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+  font-size: 11px;
+  font-weight: 400;
+}
+.chip.inativo { background: var(--warn-bg); color: var(--warn-text); }
+
+.erro {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: 8px;
+  font-size: 14px;
+}
