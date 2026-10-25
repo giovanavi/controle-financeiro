@@ -5,7 +5,9 @@ import Login from './pages/Login'
 import Layout from './components/Layout'
 import Pagina from './pages/Pagina'
 import Pessoas from './pages/Pessoas'
+import PessoaDetalhe from './pages/PessoaDetalhe'
 import Cartoes from './pages/Cartoes'
+import CartaoDetalhe from './pages/CartaoDetalhe'
 import Categorias from './pages/Categorias'
 import Lancar from './pages/Lancar'
 
@@ -32,7 +34,9 @@ export default function App() {
         <Route index element={<Navigate to="/resumo" replace />} />
         <Route path="/resumo" element={<Pagina titulo="Resumo" />} />
         <Route path="/cartoes" element={<Cartoes />} />
+        <Route path="/cartoes/:id" element={<CartaoDetalhe />} />
         <Route path="/pessoas" element={<Pessoas />} />
+        <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/lancar" element={<Lancar />} />
         <Route path="/fixos" element={<Pagina titulo="Gastos fixos" />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 
@@ -153,6 +154,7 @@ export default function Cartoes() {
                   {c.instituicao && <div className="detalhe">{c.instituicao}</div>}
                 </div>
                 <div className="acoes">
+                  <Link className="botao-secundario" to={`/cartoes/${c.id}`}>Fatura</Link>
                   <button className="botao-secundario" onClick={() => editar(c)}>Editar</button>
                   <button className="botao-secundario" onClick={() => alternarAtivo(c)}>
                     {c.ativo ? 'Desativar' : 'Ativar'}

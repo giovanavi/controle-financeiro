@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 
 export default function Pessoas() {
@@ -147,6 +148,7 @@ export default function Pessoas() {
                   >
                     Editar
                   </button>
+                  <Link className="botao-secundario" to={`/pessoas/${p.id}`}>Ver</Link>
                   {!p.eh_eu && (
                     <button className="botao-secundario" onClick={() => alternarAtiva(p)}>
                       {p.ativa ? 'Desativar' : 'Ativar'}
