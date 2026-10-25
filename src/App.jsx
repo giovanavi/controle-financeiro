@@ -3,13 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Login from './pages/Login'
 import Layout from './components/Layout'
-import Pagina from './pages/Pagina'
+import Resumo from './pages/Resumo'
 import Pessoas from './pages/Pessoas'
 import PessoaDetalhe from './pages/PessoaDetalhe'
 import Cartoes from './pages/Cartoes'
 import CartaoDetalhe from './pages/CartaoDetalhe'
 import Categorias from './pages/Categorias'
 import Lancar from './pages/Lancar'
+import GastosPorTipo from './pages/GastosPorTipo'
 
 export default function App() {
   // undefined = ainda verificando; null = sem login; objeto = logado
@@ -32,15 +33,15 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/resumo" replace />} />
-        <Route path="/resumo" element={<Pagina titulo="Resumo" />} />
+        <Route path="/resumo" element={<Resumo />} />
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/cartoes/:id" element={<CartaoDetalhe />} />
         <Route path="/pessoas" element={<Pessoas />} />
         <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/lancar" element={<Lancar />} />
-        <Route path="/fixos" element={<Pagina titulo="Gastos fixos" />} />
-        <Route path="/extras" element={<Pagina titulo="Extras" />} />
+        <Route path="/fixos" element={<GastosPorTipo tipo="fixo" titulo="Gastos fixos" />} />
+        <Route path="/extras" element={<GastosPorTipo tipo="extra" titulo="Extras" />} />
         <Route path="*" element={<Navigate to="/resumo" replace />} />
       </Route>
     </Routes>

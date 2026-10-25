@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { calcularDivisao } from '../utils/divisao'
@@ -21,6 +21,8 @@ const MODOS = [
 const hoje = () => new Date().toLocaleDateString('en-CA') // AAAA-MM-DD no fuso local
 
 export default function Lancar() {
+  const [params] = useSearchParams() // /lancar?tipo=fixo ou ?tipo=extra
+  const tipoInicial = ['fixo', 'extra'].includes(params.get('tipo')) ? params.get('tipo') : 'cartao'
   const [pessoas, setPessoas] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -29,14 +31,14 @@ export default function Lancar() {
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const [tipo, setTipo] = useState('cartao')
+  const [tipo, setTipo] = useState(tipoInicial)
   const [descricao, setDescricao] = useState('')
   const [data, setData] = useState(hoje())
   const [valor, setValor] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [cartaoId, setCartaoId] = useState('')
   const [parcelas, setParcelas] = useState('1')
-  const [recorrente, setRecorrente] = useState(false)
+  const [recorrente, setRecorrente] = useState(tipoInicial === 'fixo')
   const [fim, setFim] = useState('')
   const [observacao, setObservacao] = useState('')
 

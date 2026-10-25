@@ -1,0 +1,234 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { supabase } from '../supabaseClient'
+import SeletorMes from '../components/SeletorMes'
+import { centavosParaReais } from '../utils/dinheiro'
+import { mesAtual, mesParaISO } from '../utils/meses'
+import '../faturas.css'
+import '../resumo.css'
+
+function acumular(mapa, chave, rotulo, valor, minha, id = null) {
+  const atual = mapa.get(chave) ?? { rotulo, id, total: 0, meu: 0 }
+  atual.total += valor
+  if (minha) atual.meu += valor
+  mapa.set(chave, atual)
+}
+
+const lista = (mapa) => [...mapa.values()].sort((a, b) => a.rotulo.localeCompare(b.rotulo))
+const somar = (itens, campo) => itens.reduce((total, item) => total + item[campo], 0)
+
+export default function Resumo() {
+  const [mes, setMes] = useState(mesAtual())
+  const [dados, setDados] = useState(null)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
+
+  const carregar = useCallback(async () => {
+    const mesISO = mesParaISO(mes)
+    const [p, e, f] = await Promise.all([
+      supabase
+        .from('lancamento_participacoes')
+        .select(
+          'valor_centavos, pago, pessoas(eh_eu), lancamentos!inner(id, mes_referencia, despesas(descricao, tipo, cartao_id, cartoes(nome)))'
+        )
+        .eq('lancamentos.mes_referencia', mesISO),
+      supabase
+        .from('fatura_encargos')
+        .select('valor_centavos, faturas!inner(mes_referencia)')
+        .eq('faturas.mes_referencia', mesISO),
+      supabase
+        .from('lancamentos')
+        .select('valor_centavos, despesas!inner(tipo)')
+        .eq('despesas.tipo', 'cartao')
+        .gt('mes_referencia', mesISO),
+    ])
+
+    if (p.error || e.error || f.error) {
+      setErro('Não foi possível carregar o resumo.')
+      setCarregando(false)
+      return
+    }
+    setErro('')
+
+    const fixos = new Map()
+    const extras = new Map()
+    const cartoes = new Map()
+    let pendenteTerceiros = 0
+
+    for (const x of p.data) {
+      const lanc = x.lancamentos
+      const desp = lanc.despesas
+      const minha = !!x.pessoas?.eh_eu
+      if (!minha && !x.pago) pendenteTerceiros += x.valor_centavos
+
+      if (desp.tipo === 'fixo') {
+        acumular(fixos, lanc.id, desp.descricao, x.valor_centavos, minha, lanc.id)
+      } else if (desp.tipo === 'extra') {
+        acumular(extras, lanc.id, desp.descricao, x.valor_centavos, minha, lanc.id)
+      } else {
+        acumular(cartoes, desp.cartao_id, desp.cartoes?.nome ?? 'Cartão', x.valor_centavos, minha, desp.cartao_id)
+      }
+    }
+
+    setDados({
+      fixos: lista(fixos),
+      extras: lista(extras),
+      cartoes: lista(cartoes),
+      pendenteTerceiros,
+      encargos: somar(e.data, 'valor_centavos'),
+      parcelado: somar(f.data, 'valor_centavos'),
+    })
+    setCarregando(false)
+  }, [mes])
+
+  useEffect(() => {
+    carregar()
+  }, [carregar])
+
+  if (carregando) return <p className="suave">Carregando…</p>
+
+  const meuFixos = dados ? somar(dados.fixos, 'meu') : 0
+  const meuCartoes = dados ? somar(dados.cartoes, 'meu') : 0
+  const meuExtras = dados ? somar(dados.extras, 'meu') : 0
+  const totalCartoes = dados ? somar(dados.cartoes, 'total') : 0
+  const gastoReal = meuFixos + meuCartoes + meuExtras
+  const vazio = dados && !dados.fixos.length && !dados.extras.length && !dados.cartoes.length
+
+  return (
+    <section>
+      <div className="cabecalho-pagina">
+        <h1>Resumo</h1>
+      </div>
+
+      <SeletorMes mes={mes} aoMudar={setMes} />
+
+      {erro && <p className="erro" role="alert">{erro}</p>}
+
+      {dados && (
+        <>
+          <div className="hero">
+            <div className="rotulo">Gasto real do mês</div>
+            <div className="grande">{centavosParaReais(gastoReal)}</div>
+            <div className="rotulo">Gastos fixos + minha parte nas faturas + extras</div>
+          </div>
+
+          {vazio && (
+            <div className="bloco">
+              <p style={{ margin: 0 }}>
+                Nenhum lançamento neste mês. <Link to="/lancar">Lançar uma despesa</Link>
+              </p>
+            </div>
+          )}
+
+          <div className="metricas">
+            <div className="metrica">
+              <div className="rotulo">Gastos fixos</div>
+              <div className="numero">{centavosParaReais(meuFixos)}</div>
+            </div>
+            <div className="metrica">
+              <div className="rotulo">Minha parte nas faturas</div>
+              <div className="numero">{centavosParaReais(meuCartoes)}</div>
+            </div>
+            <div className="metrica">
+              <div className="rotulo">Extras</div>
+              <div className="numero">{centavosParaReais(meuExtras)}</div>
+            </div>
+          </div>
+
+          <div className="metricas">
+            <div className="metrica">
+              <div className="rotulo">Vou pagar de cartão</div>
+              <div className="numero">{centavosParaReais(totalCartoes + dados.encargos)}</div>
+            </div>
+            <div className="metrica">
+              <div className="rotulo">Terceiros ainda me devem</div>
+              <div className="numero">{centavosParaReais(dados.pendenteTerceiros)}</div>
+            </div>
+            <div className="metrica">
+              <div className="rotulo">Encargos (juros e taxas)</div>
+              <div className="numero">{centavosParaReais(dados.encargos)}</div>
+            </div>
+            <div className="metrica">
+              <div className="rotulo">Parcelado nos meses seguintes</div>
+              <div className="numero">{centavosParaReais(dados.parcelado)}</div>
+            </div>
+          </div>
+
+          <div className="bloco secao-resumo">
+            <div className="cabecalho-secao">
+              <b>Gastos fixos</b>
+              <Link to="/fixos">Ver todos</Link>
+            </div>
+            {dados.fixos.length === 0 ? (
+              <p className="suave" style={{ margin: 0 }}>Nenhum gasto fixo neste mês.</p>
+            ) : (
+              <ul className="lista">
+                {dados.fixos.map((i) => (
+                  <li key={i.id} className="linha">
+                    <span>{i.rotulo}</span>
+                    <span>{centavosParaReais(i.meu)}</span>
+                  </li>
+                ))}
+                <li className="linha total-linha">
+                  <span>Total</span>
+                  <span>{centavosParaReais(meuFixos)}</span>
+                </li>
+              </ul>
+            )}
+          </div>
+
+          <div className="bloco secao-resumo">
+            <div className="cabecalho-secao">
+              <b>Faturas dos cartões</b>
+              <Link to="/cartoes">Ver cartões</Link>
+            </div>
+            {dados.cartoes.length === 0 ? (
+              <p className="suave" style={{ margin: 0 }}>Nenhuma fatura neste mês.</p>
+            ) : (
+              <ul className="lista">
+                {dados.cartoes.map((c) => (
+                  <li key={c.id} className="linha">
+                    <div>
+                      <Link to={`/cartoes/${c.id}`} className="titulo" style={{ color: 'inherit', textDecoration: 'none' }}>
+                        {c.rotulo}
+                      </Link>
+                      <div className="detalhe">Fatura {centavosParaReais(c.total)}</div>
+                    </div>
+                    <span>{centavosParaReais(c.meu)}</span>
+                  </li>
+                ))}
+                <li className="linha total-linha">
+                  <span>Minha parte</span>
+                  <span>{centavosParaReais(meuCartoes)}</span>
+                </li>
+              </ul>
+            )}
+          </div>
+
+          <div className="bloco secao-resumo">
+            <div className="cabecalho-secao">
+              <b>Extras</b>
+              <Link to="/extras">Ver todos</Link>
+            </div>
+            {dados.extras.length === 0 ? (
+              <p className="suave" style={{ margin: 0 }}>Nenhum extra neste mês.</p>
+            ) : (
+              <ul className="lista">
+                {dados.extras.map((i) => (
+                  <li key={i.id} className="linha">
+                    <span>{i.rotulo}</span>
+                    <span>{centavosParaReais(i.meu)}</span>
+                  </li>
+                ))}
+                <li className="linha total-linha">
+                  <span>Total</span>
+                  <span>{centavosParaReais(meuExtras)}</span>
+                </li>
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  )
+}

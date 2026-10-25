@@ -1,0 +1,13 @@
+.hero {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #0F6E56;
+  color: #ffffff;
+  border-radius: var(--radius);
+}
+.hero .rotulo { font-size: 13px; color: #9FE1CB; }
+.hero .grande { font-size: 28px; font-weight: 500; line-height: 1.2; }
+
+.secao-resumo { margin-bottom: 16px; }
+.secao-resumo .cabecalho-secao a { font-size: 13px; color: var(--primary); text-decoration: none; }
+.total-linha { font-weight: 500; }
