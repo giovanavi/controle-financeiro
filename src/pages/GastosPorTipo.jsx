@@ -152,6 +152,9 @@ export default function GastosPorTipo({ tipo, titulo }) {
                   )}
 
                   <div className="acoes" style={{ marginTop: 8 }}>
+                    <Link className="botao-secundario" to={`/lancar?editar=${item.despesas.id}`}>
+                      Editar
+                    </Link>
                     <button className="botao-secundario" onClick={() => ajustarValor(item)}>
                       Ajustar valor deste mês
                     </button>

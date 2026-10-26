@@ -65,7 +65,7 @@ export default function CartaoDetalhe() {
         supabase
           .from('lancamentos')
           .select(
-            'id, numero_parcela, total_parcelas, valor_centavos, despesas(descricao, data), lancamento_participacoes(id, pessoa_id, valor_centavos, pago, pago_em, observacao, pessoas(nome, eh_eu))'
+            'id, numero_parcela, total_parcelas, valor_centavos, despesas(id, descricao, data), lancamento_participacoes(id, pessoa_id, valor_centavos, pago, pago_em, observacao, pessoas(nome, eh_eu))'
           )
           .eq('fatura_id', f.data.id)
           .order('criado_em'),
@@ -112,6 +112,22 @@ export default function CartaoDetalhe() {
       .update({ status: paga ? 'paga' : 'aberta', pago_em: paga ? hojeISO() : null })
       .eq('id', fatura.id)
     if (error) setErro('Não foi possível alterar o status da fatura.')
+    await carregar()
+  }
+
+  async function excluirCompra(lanc) {
+    const despesaId = lanc.despesas?.id
+    if (!despesaId) return
+    const { count } = await supabase
+      .from('lancamentos')
+      .select('id', { count: 'exact', head: true })
+      .eq('despesa_id', despesaId)
+    const outras =
+      (count ?? 1) > 1 ? ` Isso remove todas as ${count} parcelas, inclusive as de outras faturas.` : ''
+    if (!window.confirm(`Excluir "${lanc.despesas.descricao}"?${outras}`)) return
+    setErro('')
+    const { error } = await supabase.from('despesas').delete().eq('id', despesaId)
+    if (error) setErro('Não foi possível excluir a compra.')
     await carregar()
   }
 
@@ -260,7 +276,15 @@ export default function CartaoDetalhe() {
                       </div>
                       <div className="detalhe">Compra em {formatarData(l.despesas?.data)}</div>
                     </div>
-                    <div className="titulo">{centavosParaReais(l.valor_centavos)}</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="titulo">{centavosParaReais(l.valor_centavos)}</div>
+                      <div className="acoes" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+                        <Link className="link-btn" style={{ textDecoration: 'none' }} to={`/lancar?editar=${l.despesas?.id}`}>
+                          Editar
+                        </Link>
+                        <button className="link-btn" onClick={() => excluirCompra(l)}>Excluir</button>
+                      </div>
+                    </div>
                   </div>
                   <ul className="sub-lista">
                     {l.lancamento_participacoes.map((p) => (

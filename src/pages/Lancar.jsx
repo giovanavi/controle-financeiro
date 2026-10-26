@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
+import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { calcularDivisao } from '../utils/divisao'
 import { mesDaFatura, nomeDoMes } from '../utils/faturas'
 import '../lancar.css'
@@ -21,7 +21,9 @@ const MODOS = [
 const hoje = () => new Date().toLocaleDateString('en-CA') // AAAA-MM-DD no fuso local
 
 export default function Lancar() {
-  const [params] = useSearchParams() // /lancar?tipo=fixo ou ?tipo=extra
+  const [params] = useSearchParams() // /lancar?tipo=fixo ou ?tipo=extra ou ?editar=<id da despesa>
+  const editarId = params.get('editar')
+  const navigate = useNavigate()
   const tipoInicial = ['fixo', 'extra'].includes(params.get('tipo')) ? params.get('tipo') : 'cartao'
   const [pessoas, setPessoas] = useState([])
   const [cartoes, setCartoes] = useState([])
@@ -50,7 +52,10 @@ export default function Lancar() {
   useEffect(() => {
     async function carregar() {
       const [p, c, k] = await Promise.all([
-        supabase.from('pessoas').select('*').eq('ativa', true),
+        // ao editar, traz também pessoas inativas (podem estar na divisão)
+        editarId
+          ? supabase.from('pessoas').select('*')
+          : supabase.from('pessoas').select('*').eq('ativa', true),
         supabase.from('cartoes').select('*').eq('ativo', true).order('nome'),
         supabase.from('categorias').select('*').order('nome'),
       ])
@@ -69,6 +74,36 @@ export default function Lancar() {
       const eu = ordenadas.find((x) => x.eh_eu)
       if (eu) setSelecionados({ [eu.id]: true })
       if (c.data.length === 1) setCartaoId(c.data[0].id)
+      if (editarId) {
+        const { data: d, error: e } = await supabase
+          .from('despesas')
+          .select('*, despesa_participacoes(pessoa_id, valor_centavos)')
+          .eq('id', editarId)
+          .single()
+        if (e) {
+          setErro('Não foi possível carregar a despesa para edição.')
+        } else {
+          setTipo(d.tipo)
+          setDescricao(d.descricao)
+          setData(d.data)
+          setValor(centavosParaCampo(d.valor_total_centavos))
+          setCategoriaId(d.categoria_id ?? '')
+          setCartaoId(d.cartao_id ?? '')
+          setParcelas(String(d.total_parcelas))
+          setRecorrente(d.recorrente)
+          setFim(d.recorrencia_fim ?? '')
+          setObservacao(d.observacao ?? '')
+          setModo('valor')
+          const marcados = {}
+          const preenchidos = {}
+          d.despesa_participacoes.forEach((x) => {
+            marcados[x.pessoa_id] = true
+            preenchidos[x.pessoa_id] = centavosParaCampo(x.valor_centavos)
+          })
+          setSelecionados(marcados)
+          setValores(preenchidos)
+        }
+      }
       setCarregando(false)
     }
     carregar()
@@ -122,7 +157,8 @@ export default function Lancar() {
     const participacoes = divisao.partes.filter((p) => p.valor_centavos > 0)
 
     setSalvando(true)
-    const { error } = await supabase.rpc('criar_despesa', {
+    const { error } = await supabase.rpc(editarId ? 'editar_despesa' : 'criar_despesa', {
+      ...(editarId ? { p_despesa_id: editarId } : {}),
       p_descricao: descricao.trim(),
       p_tipo: tipo,
       p_data: data,
@@ -144,6 +180,10 @@ export default function Lancar() {
       return
     }
 
+    if (editarId) {
+      navigate(tipo === 'cartao' ? `/cartoes/${cartaoId}` : tipo === 'fixo' ? '/fixos' : '/extras')
+      return
+    }
     setSucesso(`Despesa "${descricao.trim()}" lançada.`)
     setDescricao('')
     setValor('')
@@ -164,10 +204,17 @@ export default function Lancar() {
   return (
     <section>
       <div className="cabecalho-pagina">
-        <h1>Lançar despesa</h1>
+        <h1>{editarId ? 'Editar despesa' : 'Lançar despesa'}</h1>
       </div>
 
       {sucesso && <p className="sucesso" role="status">{sucesso}</p>}
+      {editarId && (
+        <p className="aviso" style={{ marginBottom: 12 }}>
+          Ao salvar, as parcelas ou os meses desta despesa são recriados. Não dá para editar se
+          houver pagamentos marcados: desmarque antes. Ajustes de valor feitos em meses
+          específicos de um gasto fixo serão perdidos.
+        </p>
+      )}
       {erro && <p className="erro" role="alert">{erro}</p>}
 
       {pessoas.length === 0 && (
@@ -365,7 +412,7 @@ export default function Lancar() {
           disabled={salvando || pessoas.length === 0}
           style={{ width: '100%' }}
         >
-          {salvando ? 'Lançando…' : 'Lançar despesa'}
+          {salvando ? 'Salvando…' : editarId ? 'Salvar alterações' : 'Lançar despesa'}
         </button>
       </form>
     </section>
