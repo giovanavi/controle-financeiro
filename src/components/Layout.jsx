@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { House, CreditCard, Users, Plus, Repeat, Sparkles, Tag, LogOut } from 'lucide-react'
+import { House, CreditCard, Users, Plus, Repeat, Sparkles, Tag, Upload, LogOut } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import '../cadastros.css'
 
@@ -14,6 +14,7 @@ const itensSecundarios = [
   { para: '/fixos', rotulo: 'Gastos fixos', Icone: Repeat },
   { para: '/extras', rotulo: 'Extras', Icone: Sparkles },
   { para: '/categorias', rotulo: 'Categorias', Icone: Tag },
+  { para: '/importar', rotulo: 'Importar', Icone: Upload },
 ]
 
 const classeDoItem = ({ isActive }) => (isActive ? 'item ativo' : 'item')

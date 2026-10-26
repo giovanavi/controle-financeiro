@@ -1,0 +1,22 @@
+.tabela-rolagem { overflow-x: auto; }
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tabela th,
+.tabela td {
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.tabela th { font-weight: 500; color: var(--text-2); }
+.tabela td.num, .tabela th.num { text-align: right; }
+
+.situacao-ok { color: var(--ok-text); }
+.situacao-erro { color: var(--danger-text); white-space: normal; }
+.situacao-aviso { color: var(--warn-text); white-space: normal; }
+
+.campo input[type='file'] { padding: 8px; }

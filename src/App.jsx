@@ -11,6 +11,7 @@ import CartaoDetalhe from './pages/CartaoDetalhe'
 import Categorias from './pages/Categorias'
 import Lancar from './pages/Lancar'
 import GastosPorTipo from './pages/GastosPorTipo'
+import Importar from './pages/Importar'
 
 export default function App() {
   // undefined = ainda verificando; null = sem login; objeto = logado
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/lancar" element={<Lancar />} />
+        <Route path="/importar" element={<Importar />} />
         <Route path="/fixos" element={<GastosPorTipo tipo="fixo" titulo="Gastos fixos" />} />
         <Route path="/extras" element={<GastosPorTipo tipo="extra" titulo="Extras" />} />
         <Route path="*" element={<Navigate to="/resumo" replace />} />
