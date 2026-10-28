@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import CampoData from '../components/CampoData'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { calcularDivisao } from '../utils/divisao'
 import { mesDaFatura, nomeDoMes } from '../utils/faturas'
@@ -141,7 +142,7 @@ export default function Lancar() {
 
     if (!descricao.trim()) return setErro('Informe a descrição.')
     if (!totalCentavos || totalCentavos <= 0) return setErro('Informe um valor total maior que zero.')
-    if (!data) return setErro('Informe a data.')
+    if (!data) return setErro('Informe uma data válida no formato dd/mm/aaaa.')
     if (tipo === 'cartao') {
       if (!cartaoId) return setErro('Escolha o cartão.')
       if (!Number.isInteger(nParcelas) || nParcelas < 1 || nParcelas > 60) {
@@ -260,7 +261,7 @@ export default function Lancar() {
             </label>
             <label className="campo">
               Data
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+              <CampoData valor={data} aoMudar={setData} />
             </label>
           </div>
 
@@ -318,7 +319,7 @@ export default function Lancar() {
               {recorrente && (
                 <label className="campo">
                   Repetir até (opcional)
-                  <input type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
+                  <CampoData valor={fim} aoMudar={setFim} />
                 </label>
               )}
               {recorrente && !fim && (

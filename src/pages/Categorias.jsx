@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import MenuAcoes from '../components/MenuAcoes'
+import { useDialogo } from '../components/Dialogo'
 
 const SUGESTOES = [
   'Moradia',
@@ -16,6 +19,7 @@ const SUGESTOES = [
 const JA_EXISTE = 'Já existe uma categoria com esse nome.'
 
 export default function Categorias() {
+  const { confirmar, perguntar } = useDialogo()
   const [categorias, setCategorias] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -51,7 +55,13 @@ export default function Categorias() {
   }
 
   async function renomear(categoria) {
-    const novo = window.prompt('Novo nome da categoria', categoria.nome)
+    const novo = await perguntar({
+      titulo: 'Renomear categoria',
+      mensagem: 'As despesas que usam esta categoria passam a mostrar o novo nome.',
+      rotulo: 'Novo nome',
+      valorInicial: categoria.nome,
+      confirmar: 'Salvar nome',
+    })
     if (novo === null) return
     const limpo = novo.trim()
     if (!limpo) return setErro('O nome não pode ficar vazio.')
@@ -62,9 +72,14 @@ export default function Categorias() {
   }
 
   async function excluir(categoria) {
-    const confirmou = window.confirm(
-      `Excluir a categoria "${categoria.nome}"? As despesas dela ficam sem categoria.`
-    )
+    const confirmou = await confirmar({
+      titulo: 'Excluir categoria?',
+      mensagem:
+        'As despesas que usam esta categoria continuam existindo, mas ficam sem categoria. Não dá para desfazer.',
+      detalhes: [['Categoria', categoria.nome]],
+      confirmar: 'Excluir categoria',
+      perigo: true,
+    })
     if (!confirmou) return
     setErro('')
     const { error } = await supabase.from('categorias').delete().eq('id', categoria.id)
@@ -108,11 +123,13 @@ export default function Categorias() {
           <ul className="lista">
             {categorias.map((c) => (
               <li key={c.id} className="linha">
-                <div className="titulo">{c.nome}</div>
-                <div className="acoes">
-                  <button className="botao-secundario" onClick={() => renomear(c)}>Renomear</button>
-                  <button className="botao-secundario perigo" onClick={() => excluir(c)}>Excluir</button>
-                </div>
+                <div className="item-texto titulo">{c.nome}</div>
+                <MenuAcoes
+                  itens={[
+                    { rotulo: 'Renomear', Icone: Pencil, aoClicar: () => renomear(c) },
+                    { rotulo: 'Excluir', Icone: Trash2, perigo: true, aoClicar: () => excluir(c) },
+                  ]}
+                />
               </li>
             ))}
           </ul>

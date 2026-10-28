@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronRight, Pencil, Power } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import MenuAcoes from '../components/MenuAcoes'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 
 const diaValido = (texto) => {
@@ -143,23 +145,30 @@ export default function Cartoes() {
           <ul className="lista">
             {cartoes.map((c) => (
               <li key={c.id} className={c.ativo ? 'linha' : 'linha desativada'}>
-                <div>
-                  <div className="titulo">
-                    {c.nome}
-                    {!c.ativo && <span className="chip inativo">Inativo</span>}
+                <Link className="item-link" to={`/cartoes/${c.id}`}>
+                  <div className="item-texto">
+                    <div className="titulo">
+                      {c.nome}
+                      {!c.ativo && <span className="chip inativo">Inativo</span>}
+                    </div>
+                    <div className="detalhe">Limite {centavosParaReais(c.limite_centavos)}</div>
+                    <div className="detalhe">
+                      Fecha dia {c.dia_fechamento} · vence dia {c.dia_vencimento}
+                      {c.instituicao ? ` · ${c.instituicao}` : ''}
+                    </div>
                   </div>
-                  <div className="detalhe">
-                    Limite {centavosParaReais(c.limite_centavos)} · fecha dia {c.dia_fechamento} · vence dia {c.dia_vencimento}
-                  </div>
-                  {c.instituicao && <div className="detalhe">{c.instituicao}</div>}
-                </div>
-                <div className="acoes">
-                  <Link className="botao-secundario" to={`/cartoes/${c.id}`}>Fatura</Link>
-                  <button className="botao-secundario" onClick={() => editar(c)}>Editar</button>
-                  <button className="botao-secundario" onClick={() => alternarAtivo(c)}>
-                    {c.ativo ? 'Desativar' : 'Ativar'}
-                  </button>
-                </div>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </Link>
+                <MenuAcoes
+                  itens={[
+                    { rotulo: 'Editar', Icone: Pencil, aoClicar: () => editar(c) },
+                    {
+                      rotulo: c.ativo ? 'Desativar' : 'Ativar',
+                      Icone: Power,
+                      aoClicar: () => alternarAtivo(c),
+                    },
+                  ]}
+                />
               </li>
             ))}
           </ul>

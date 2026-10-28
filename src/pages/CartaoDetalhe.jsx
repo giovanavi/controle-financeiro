@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
+import MenuAcoes from '../components/MenuAcoes'
 import { centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
-import { formatarData, hojeISO, mesAtual, mesParaISO } from '../utils/meses'
+import { formatarData, hojeISO, mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago, salvarObservacaoPagamento } from '../utils/pagamento'
 import '../faturas.css'
 
@@ -23,6 +25,7 @@ const rotuloParcela = (n, total) =>
 
 export default function CartaoDetalhe() {
   const { id } = useParams()
+  const { confirmar, perguntar } = useDialogo()
   const [mes, setMes] = useState(mesAtual())
   const [cartao, setCartao] = useState(null)
   const [fatura, setFatura] = useState(null) // null = não existe fatura neste mês
@@ -96,7 +99,14 @@ export default function CartaoDetalhe() {
   }
 
   async function editarObservacao(parte) {
-    const texto = window.prompt('Observação (ex.: pagou por Pix)', parte.observacao ?? '')
+    const texto = await perguntar({
+      titulo: 'Observação do pagamento',
+      mensagem: `${parte.pessoas?.nome} · ${centavosParaReais(parte.valor_centavos)}`,
+      rotulo: 'Observação',
+      placeholder: 'Ex.: pagou por Pix',
+      valorInicial: parte.observacao ?? '',
+      confirmar: 'Salvar observação',
+    })
     if (texto === null) return
     setErro('')
     const { error } = await salvarObservacaoPagamento(parte.id, texto)
@@ -118,13 +128,49 @@ export default function CartaoDetalhe() {
   async function excluirCompra(lanc) {
     const despesaId = lanc.despesas?.id
     if (!despesaId) return
-    const { count } = await supabase
+
+    // confere tudo que será apagado antes de perguntar
+    const { data: parcelas, error: erroBusca } = await supabase
       .from('lancamentos')
-      .select('id', { count: 'exact', head: true })
+      .select('mes_referencia, valor_centavos, lancamento_participacoes(pago, pessoas(eh_eu))')
       .eq('despesa_id', despesaId)
-    const outras =
-      (count ?? 1) > 1 ? ` Isso remove todas as ${count} parcelas, inclusive as de outras faturas.` : ''
-    if (!window.confirm(`Excluir "${lanc.despesas.descricao}"?${outras}`)) return
+      .order('mes_referencia')
+    if (erroBusca || !parcelas || parcelas.length === 0) {
+      setErro('Não foi possível conferir a compra antes de excluir.')
+      return
+    }
+
+    const quantidade = parcelas.length
+    const totalParcelas = soma(parcelas, (p) => p.valor_centavos)
+    const primeira = mesDeISO(parcelas[0].mes_referencia)
+    const ultima = mesDeISO(parcelas[quantidade - 1].mes_referencia)
+    const comPagamento = parcelas.some((p) =>
+      p.lancamento_participacoes.some((x) => x.pago && !x.pessoas?.eh_eu)
+    )
+
+    const detalhes = [['Compra', lanc.despesas.descricao]]
+    if (quantidade > 1) {
+      detalhes.push(['Parcelas', `${quantidade}, de ${rotuloMes(primeira)} a ${rotuloMes(ultima)}`])
+    } else {
+      detalhes.push(['Fatura', rotuloMes(primeira)])
+    }
+    detalhes.push(['Valor somado', centavosParaReais(totalParcelas)])
+
+    const confirmou = await confirmar({
+      titulo: 'Excluir esta compra?',
+      mensagem:
+        quantidade > 1
+          ? 'Todas as parcelas serão removidas, inclusive as de outras faturas, junto com a divisão entre as pessoas. Não dá para desfazer.'
+          : 'A compra e a divisão entre as pessoas serão removidas. Não dá para desfazer.',
+      detalhes,
+      aviso: comPagamento
+        ? 'Há pagamentos de terceiros marcados nesta compra. Eles também serão perdidos.'
+        : null,
+      confirmar: quantidade > 1 ? `Excluir ${quantidade} parcelas` : 'Excluir compra',
+      perigo: true,
+    })
+    if (!confirmou) return
+
     setErro('')
     const { error } = await supabase.from('despesas').delete().eq('id', despesaId)
     if (error) setErro('Não foi possível excluir a compra.')
@@ -149,7 +195,17 @@ export default function CartaoDetalhe() {
   }
 
   async function excluirEncargo(encargo) {
-    if (!window.confirm('Excluir este encargo?')) return
+    const confirmou = await confirmar({
+      titulo: 'Excluir encargo?',
+      mensagem: 'O encargo sai do total a pagar ao banco desta fatura.',
+      detalhes: [
+        ['Tipo', ROTULO_ENCARGO[encargo.tipo] ?? encargo.tipo],
+        ['Valor', centavosParaReais(encargo.valor_centavos)],
+      ],
+      confirmar: 'Excluir encargo',
+      perigo: true,
+    })
+    if (!confirmou) return
     setErro('')
     const { error } = await supabase.from('fatura_encargos').delete().eq('id', encargo.id)
     if (error) setErro('Não foi possível excluir o encargo.')
@@ -276,14 +332,14 @@ export default function CartaoDetalhe() {
                       </div>
                       <div className="detalhe">Compra em {formatarData(l.despesas?.data)}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div className="titulo">{centavosParaReais(l.valor_centavos)}</div>
-                      <div className="acoes" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
-                        <Link className="link-btn" style={{ textDecoration: 'none' }} to={`/lancar?editar=${l.despesas?.id}`}>
-                          Editar
-                        </Link>
-                        <button className="link-btn" onClick={() => excluirCompra(l)}>Excluir</button>
-                      </div>
+                    <div className="valor-com-menu">
+                      <span className="titulo">{centavosParaReais(l.valor_centavos)}</span>
+                      <MenuAcoes
+                        itens={[
+                          { rotulo: 'Editar compra', Icone: Pencil, para: `/lancar?editar=${l.despesas?.id}` },
+                          { rotulo: 'Excluir compra', Icone: Trash2, perigo: true, aoClicar: () => excluirCompra(l) },
+                        ]}
+                      />
                     </div>
                   </div>
                   <ul className="sub-lista">
@@ -325,11 +381,13 @@ export default function CartaoDetalhe() {
                       <div className="titulo">{ROTULO_ENCARGO[e.tipo] ?? e.tipo}</div>
                       {e.descricao && <div className="detalhe">{e.descricao}</div>}
                     </div>
-                    <div className="acoes" style={{ alignItems: 'center' }}>
+                    <div className="valor-com-menu">
                       <span>{centavosParaReais(e.valor_centavos)}</span>
-                      <button className="botao-secundario perigo" onClick={() => excluirEncargo(e)}>
-                        Excluir
-                      </button>
+                      <MenuAcoes
+                        itens={[
+                          { rotulo: 'Excluir encargo', Icone: Trash2, perigo: true, aoClicar: () => excluirEncargo(e) },
+                        ]}
+                      />
                     </div>
                   </li>
                 ))}

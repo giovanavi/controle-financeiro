@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
@@ -28,6 +29,7 @@ function origem(item) {
 
 export default function PessoaDetalhe() {
   const { id } = useParams()
+  const { confirmar, perguntar } = useDialogo()
   const [mes, setMes] = useState(mesAtual())
   const [escopo, setEscopo] = useState('mes') // 'mes' ou 'pendencias' (todos os meses)
   const [filtro, setFiltro] = useState('todos')
@@ -80,7 +82,14 @@ export default function PessoaDetalhe() {
   }
 
   async function editarObservacao(item) {
-    const texto = window.prompt('Observação (ex.: pagou por Pix)', item.observacao ?? '')
+    const texto = await perguntar({
+      titulo: 'Observação do pagamento',
+      mensagem: `${item.lancamentos.despesas?.descricao} · ${centavosParaReais(item.valor_centavos)}`,
+      rotulo: 'Observação',
+      placeholder: 'Ex.: pagou por Pix',
+      valorInicial: item.observacao ?? '',
+      confirmar: 'Salvar observação',
+    })
     if (texto === null) return
     setErro('')
     const { error } = await salvarObservacaoPagamento(item.id, texto)
@@ -91,9 +100,16 @@ export default function PessoaDetalhe() {
   async function pagarTodosDoMes() {
     const pendentes = itens.filter((x) => !x.pago).map((x) => x.id)
     if (pendentes.length === 0) return
-    const confirmou = window.confirm(
-      `Marcar ${pendentes.length} item(ns) de ${rotuloMes(mes)} como pagos?`
-    )
+    const valorPendente = soma(itens.filter((x) => !x.pago), (x) => x.valor_centavos)
+    const confirmou = await confirmar({
+      titulo: 'Marcar tudo como pago?',
+      mensagem: `Os itens pendentes de ${pessoa.nome} em ${rotuloMes(mes)} ficam como pagos. Dá para desfazer item por item.`,
+      detalhes: [
+        ['Itens', String(pendentes.length)],
+        ['Valor', centavosParaReais(valorPendente)],
+      ],
+      confirmar: 'Marcar como pagos',
+    })
     if (!confirmou) return
     setErro('')
     const { error } = await definirPagoVarios(pendentes, true)

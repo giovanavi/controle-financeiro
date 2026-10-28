@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Pencil, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import MenuAcoes from '../components/MenuAcoes'
+import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
@@ -11,6 +14,7 @@ const soma = (lista, f) => lista.reduce((total, item) => total + f(item), 0)
 
 // Usada para "Gastos fixos" (tipo="fixo") e "Extras" (tipo="extra")
 export default function GastosPorTipo({ tipo, titulo }) {
+  const { confirmar, perguntar } = useDialogo()
   const [mes, setMes] = useState(mesAtual())
   const [itens, setItens] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -46,10 +50,14 @@ export default function GastosPorTipo({ tipo, titulo }) {
   }
 
   async function ajustarValor(item) {
-    const texto = window.prompt(
-      `Novo valor total de "${item.despesas.descricao}" em ${rotuloMes(mes)} (R$)`,
-      centavosParaCampo(item.valor_centavos)
-    )
+    const texto = await perguntar({
+      titulo: 'Ajustar valor deste mês',
+      mensagem: `${item.despesas.descricao} em ${rotuloMes(mes)}. A divisão entre as pessoas mantém a mesma proporção, e os outros meses não mudam.`,
+      rotulo: 'Novo valor total (R$)',
+      valorInicial: centavosParaCampo(item.valor_centavos),
+      inputMode: 'decimal',
+      confirmar: 'Ajustar valor',
+    })
     if (texto === null) return
     const novo = reaisParaCentavos(texto)
     if (!novo || novo <= 0) return setErro('Informe um valor maior que zero, por exemplo 310,00.')
@@ -67,10 +75,20 @@ export default function GastosPorTipo({ tipo, titulo }) {
 
   async function excluir(item) {
     const recorrente = item.despesas.recorrente
-    const mensagem = recorrente
-      ? `Excluir "${item.despesas.descricao}" só em ${rotuloMes(mes)}? Os outros meses continuam.`
-      : `Excluir "${item.despesas.descricao}"?`
-    if (!window.confirm(mensagem)) return
+    const confirmou = await confirmar({
+      titulo: recorrente ? `Excluir só em ${rotuloMes(mes)}?` : 'Excluir este lançamento?',
+      mensagem: recorrente
+        ? 'Apenas este mês será removido. Os outros meses deste gasto fixo continuam.'
+        : 'O lançamento e a divisão entre as pessoas serão removidos. Não dá para desfazer.',
+      detalhes: [
+        ['Lançamento', item.despesas.descricao],
+        ['Valor', centavosParaReais(item.valor_centavos)],
+        ['Mês', rotuloMes(mes)],
+      ],
+      confirmar: recorrente ? 'Excluir este mês' : 'Excluir',
+      perigo: true,
+    })
+    if (!confirmou) return
     setErro('')
     // gasto não recorrente: apaga a despesa inteira; recorrente: apaga só a ocorrência do mês
     const { error } = recorrente
@@ -125,7 +143,21 @@ export default function GastosPorTipo({ tipo, titulo }) {
                         <div className="detalhe">Total {centavosParaReais(item.valor_centavos)}</div>
                       )}
                     </div>
-                    <div className="titulo">{centavosParaReais(minha)}</div>
+                    <div className="valor-com-menu">
+                      <span className="titulo">{centavosParaReais(minha)}</span>
+                      <MenuAcoes
+                        itens={[
+                          { rotulo: 'Editar', Icone: Pencil, para: `/lancar?editar=${item.despesas.id}` },
+                          { rotulo: 'Ajustar valor do mês', Icone: SlidersHorizontal, aoClicar: () => ajustarValor(item) },
+                          {
+                            rotulo: item.despesas.recorrente ? 'Excluir só este mês' : 'Excluir',
+                            Icone: Trash2,
+                            perigo: true,
+                            aoClicar: () => excluir(item),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
 
                   {dividida && (
@@ -150,18 +182,6 @@ export default function GastosPorTipo({ tipo, titulo }) {
                       ))}
                     </ul>
                   )}
-
-                  <div className="acoes" style={{ marginTop: 8 }}>
-                    <Link className="botao-secundario" to={`/lancar?editar=${item.despesas.id}`}>
-                      Editar
-                    </Link>
-                    <button className="botao-secundario" onClick={() => ajustarValor(item)}>
-                      Ajustar valor deste mês
-                    </button>
-                    <button className="botao-secundario perigo" onClick={() => excluir(item)}>
-                      Excluir
-                    </button>
-                  </div>
                 </li>
               )
             })}

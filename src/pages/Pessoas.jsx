@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronRight, Pencil, Power } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import MenuAcoes from '../components/MenuAcoes'
 
 export default function Pessoas() {
   const [pessoas, setPessoas] = useState([])
@@ -130,31 +132,38 @@ export default function Pessoas() {
           <ul className="lista">
             {pessoas.map((p) => (
               <li key={p.id} className={p.ativa ? 'linha' : 'linha desativada'}>
-                <div>
-                  <div className="titulo">
-                    {p.nome}
-                    {p.eh_eu && <span className="chip">Você</span>}
-                    {!p.ativa && <span className="chip inativo">Inativa</span>}
+                <Link className="item-link" to={`/pessoas/${p.id}`}>
+                  <div className="item-texto">
+                    <div className="titulo">
+                      {p.nome}
+                      {p.eh_eu && <span className="chip">Você</span>}
+                      {!p.ativa && <span className="chip inativo">Inativa</span>}
+                    </div>
+                    {p.observacao && <div className="detalhe">{p.observacao}</div>}
                   </div>
-                  {p.observacao && <div className="detalhe">{p.observacao}</div>}
-                </div>
-                <div className="acoes">
-                  <button
-                    className="botao-secundario"
-                    onClick={() => {
-                      setErro('')
-                      setForm({ id: p.id, nome: p.nome, observacao: p.observacao ?? '' })
-                    }}
-                  >
-                    Editar
-                  </button>
-                  <Link className="botao-secundario" to={`/pessoas/${p.id}`}>Ver</Link>
-                  {!p.eh_eu && (
-                    <button className="botao-secundario" onClick={() => alternarAtiva(p)}>
-                      {p.ativa ? 'Desativar' : 'Ativar'}
-                    </button>
-                  )}
-                </div>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </Link>
+                <MenuAcoes
+                  itens={[
+                    {
+                      rotulo: 'Editar',
+                      Icone: Pencil,
+                      aoClicar: () => {
+                        setErro('')
+                        setForm({ id: p.id, nome: p.nome, observacao: p.observacao ?? '' })
+                      },
+                    },
+                    ...(p.eh_eu
+                      ? []
+                      : [
+                          {
+                            rotulo: p.ativa ? 'Desativar' : 'Ativar',
+                            Icone: Power,
+                            aoClicar: () => alternarAtiva(p),
+                          },
+                        ]),
+                  ]}
+                />
               </li>
             ))}
           </ul>
