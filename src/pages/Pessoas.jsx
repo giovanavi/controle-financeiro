@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Pencil, Power } from 'lucide-react'
+import { ChevronRight, Pencil, Power, Users } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
+import EstadoVazio from '../components/EstadoVazio'
 
 export default function Pessoas() {
   const [pessoas, setPessoas] = useState([])
@@ -127,7 +128,12 @@ export default function Pessoas() {
         {carregando ? (
           <p className="suave">Carregando…</p>
         ) : pessoas.length === 0 ? (
-          <p className="suave">Nenhuma pessoa cadastrada ainda.</p>
+          <EstadoVazio
+            simples
+            Icone={Users}
+            titulo="Nenhuma pessoa cadastrada"
+            texto="Cadastre as pessoas que usam seus cartões para poder dividir as compras."
+          />
         ) : (
           <ul className="lista">
             {pessoas.map((p) => (

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CalendarDays, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
+import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais } from '../utils/dinheiro'
-import { mesAtual, mesParaISO } from '../utils/meses'
+import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
 import '../faturas.css'
 import '../resumo.css'
 
@@ -93,6 +95,8 @@ export default function Resumo() {
   const totalCartoes = dados ? somar(dados.cartoes, 'total') : 0
   const gastoReal = meuFixos + meuCartoes + meuExtras
   const vazio = dados && !dados.fixos.length && !dados.extras.length && !dados.cartoes.length
+  const atual = mesAtual()
+  const ehMesAtual = atual.ano === mes.ano && atual.mes === mes.mes
 
   return (
     <section>
@@ -113,12 +117,33 @@ export default function Resumo() {
           </div>
 
           {vazio && (
-            <div className="bloco">
-              <p style={{ margin: 0 }}>
-                Nenhum lançamento neste mês. <Link to="/lancar">Lançar uma despesa</Link>
-              </p>
-            </div>
+            <>
+              <EstadoVazio
+                Icone={CalendarDays}
+                titulo={`Nada lançado em ${rotuloMes(mes)}`}
+                texto="Lance uma despesa, importe a fatura de um cartão ou cadastre seus gastos fixos para ver o resumo deste mês."
+              >
+                <Link className="botao-primario" to="/lancar">
+                  <Plus size={18} aria-hidden="true" /> Lançar despesa
+                </Link>
+                <Link className="botao-secundario" to="/lancar?tipo=fixo">Novo gasto fixo</Link>
+                <Link className="botao-secundario" to="/importar">Importar da planilha</Link>
+                {!ehMesAtual && (
+                  <button className="botao-secundario" onClick={() => setMes(mesAtual())}>
+                    Voltar para o mês atual
+                  </button>
+                )}
+              </EstadoVazio>
+              {dados.parcelado > 0 && (
+                <p className="dica" style={{ marginBottom: 16, textAlign: 'center' }}>
+                  Há {centavosParaReais(dados.parcelado)} em parcelas nos meses seguintes.
+                </p>
+              )}
+            </>
           )}
+
+          {!vazio && (
+            <>
 
           <div className="metricas">
             <div className="metrica">
@@ -227,6 +252,8 @@ export default function Resumo() {
               </ul>
             )}
           </div>
+            </>
+          )}
         </>
       )}
     </section>

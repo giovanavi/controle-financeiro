@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Pencil, Repeat, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
+import EstadoVazio from '../components/EstadoVazio'
 import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
@@ -124,7 +125,20 @@ export default function GastosPorTipo({ tipo, titulo }) {
 
       <div className="bloco">
         {itens.length === 0 ? (
-          <p className="suave" style={{ margin: 0 }}>Nada lançado neste mês.</p>
+          <EstadoVazio
+            simples
+            Icone={tipo === 'fixo' ? Repeat : Sparkles}
+            titulo={tipo === 'fixo' ? 'Nenhum gasto fixo neste mês' : 'Nenhum extra neste mês'}
+            texto={
+              tipo === 'fixo'
+                ? 'Cadastre contas como aluguel, internet e energia. Elas se repetem sozinhas todo mês.'
+                : 'Lance gastos avulsos que não fazem parte das faturas nem das contas fixas.'
+            }
+          >
+            <Link className="botao-primario pequeno" to={`/lancar?tipo=${tipo}`}>
+              {tipo === 'fixo' ? 'Novo gasto fixo' : 'Novo extra'}
+            </Link>
+          </EstadoVazio>
         ) : (
           <ul className="lista">
             {itens.map((item) => {

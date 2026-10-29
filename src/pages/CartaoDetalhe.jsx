@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Receipt, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import MenuAcoes from '../components/MenuAcoes'
+import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { formatarData, hojeISO, mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago, salvarObservacaoPagamento } from '../utils/pagamento'
@@ -283,7 +284,15 @@ export default function CartaoDetalhe() {
 
       {!fatura ? (
         <div className="bloco">
-          <p className="suave" style={{ margin: 0 }}>Nenhuma compra nesta fatura.</p>
+          <EstadoVazio
+            simples
+            Icone={Receipt}
+            titulo="Nenhuma compra nesta fatura"
+            texto="Lance uma compra neste cartão ou importe a aba da planilha."
+          >
+            <Link className="botao-primario pequeno" to="/lancar">Lançar compra</Link>
+            <Link className="botao-secundario" to="/importar">Importar da planilha</Link>
+          </EstadoVazio>
         </div>
       ) : (
         <>

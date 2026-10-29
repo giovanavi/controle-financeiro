@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Pencil, Power } from 'lucide-react'
+import { ChevronRight, CreditCard, Pencil, Power } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
+import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 
 const diaValido = (texto) => {
@@ -140,7 +141,22 @@ export default function Cartoes() {
         {carregando ? (
           <p className="suave">Carregando…</p>
         ) : cartoes.length === 0 ? (
-          <p className="suave">Nenhum cartão cadastrado ainda.</p>
+          <EstadoVazio
+            simples
+            Icone={CreditCard}
+            titulo="Nenhum cartão cadastrado"
+            texto="Cadastre seus cartões para lançar compras e acompanhar faturas e limites."
+          >
+            <button
+              className="botao-primario pequeno"
+              onClick={() => {
+                setErro('')
+                setForm({ id: null, nome: '', instituicao: '', limite: '', fechamento: '', vencimento: '' })
+              }}
+            >
+              Cadastrar cartão
+            </button>
+          </EstadoVazio>
         ) : (
           <ul className="lista">
             {cartoes.map((c) => (
