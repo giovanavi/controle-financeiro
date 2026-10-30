@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
+import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago, definirPagoVarios, salvarObservacaoPagamento } from '../utils/pagamento'
@@ -36,6 +37,8 @@ export default function PessoaDetalhe() {
   const [pessoa, setPessoa] = useState(null)
   const [itens, setItens] = useState([])
   const [pendenteGeral, setPendenteGeral] = useState(0)
+  const [resumoMeses, setResumoMeses] = useState([]) // [{ mes, atribuido, pago }]
+  const [soPendentes, setSoPendentes] = useState(true)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
@@ -49,7 +52,10 @@ export default function PessoaDetalhe() {
     const [p, i, g] = await Promise.all([
       supabase.from('pessoas').select('*').eq('id', id).single(),
       consulta,
-      supabase.from('lancamento_participacoes').select('valor_centavos').eq('pessoa_id', id).eq('pago', false),
+      supabase
+        .from('lancamento_participacoes')
+        .select('valor_centavos, pago, lancamentos!inner(mes_referencia)')
+        .eq('pessoa_id', id),
     ])
 
     if (p.error || i.error || g.error) {
@@ -59,7 +65,16 @@ export default function PessoaDetalhe() {
     }
     setErro('')
     setPessoa(p.data)
-    setPendenteGeral(soma(g.data, (x) => x.valor_centavos))
+    setPendenteGeral(soma(g.data.filter((x) => !x.pago), (x) => x.valor_centavos))
+    const porMes = new Map()
+    g.data.forEach((x) => {
+      const chave = x.lancamentos.mes_referencia
+      const atual = porMes.get(chave) ?? { mes: chave, atribuido: 0, pago: 0 }
+      atual.atribuido += x.valor_centavos
+      if (x.pago) atual.pago += x.valor_centavos
+      porMes.set(chave, atual)
+    })
+    setResumoMeses([...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes)))
     setItens(
       [...i.data].sort(
         (a, b) =>
@@ -133,6 +148,8 @@ export default function PessoaDetalhe() {
   const atribuido = soma(itens, (x) => x.valor_centavos)
   const pago = soma(itens.filter((x) => x.pago), (x) => x.valor_centavos)
   const pendente = atribuido - pago
+  const linhasMeses = resumoMeses.filter((m) => !soPendentes || m.atribuido - m.pago > 0)
+  const totalPendenteMeses = soma(linhasMeses, (m) => m.atribuido - m.pago)
 
   const visiveis =
     escopo === 'pendencias' || filtro === 'todos'
@@ -168,9 +185,71 @@ export default function PessoaDetalhe() {
           <button className={escopo === 'pendencias' ? 'ativo' : ''} onClick={() => setEscopo('pendencias')}>
             Todas as pendências
           </button>
+          <button className={escopo === 'resumo' ? 'ativo' : ''} onClick={() => setEscopo('resumo')}>
+            Mês a mês
+          </button>
         </div>
       )}
 
+      {escopo === 'resumo' && (
+        <div className="bloco">
+          <div className="cabecalho-secao">
+            <b>Mês a mês</b>
+            <div className="segmentos pequeno" role="group" aria-label="Filtrar meses">
+              <button className={soPendentes ? 'ativo' : ''} onClick={() => setSoPendentes(true)}>
+                Com pendência
+              </button>
+              <button className={!soPendentes ? 'ativo' : ''} onClick={() => setSoPendentes(false)}>
+                Todos
+              </button>
+            </div>
+          </div>
+          {linhasMeses.length === 0 ? (
+            <EstadoVazio
+              simples
+              Icone={CalendarDays}
+              titulo="Nenhum mês para mostrar"
+              texto={soPendentes ? 'Não há pendências. Veja a lista completa em "Todos".' : 'Ainda não há lançamentos para esta pessoa.'}
+            />
+          ) : (
+            <ul className="lista">
+              {linhasMeses.map((m) => {
+                const aberto = m.atribuido - m.pago
+                return (
+                  <li key={m.mes} className="linha">
+                    <button
+                      type="button"
+                      className="item-link botao-linha"
+                      onClick={() => {
+                        setMes(mesDeISO(m.mes))
+                        setEscopo('mes')
+                      }}
+                    >
+                      <div className="item-texto">
+                        <div className="titulo">{rotuloMes(mesDeISO(m.mes))}</div>
+                        <div className="detalhe">
+                          Atribuído {centavosParaReais(m.atribuido)} · pago {centavosParaReais(m.pago)}
+                        </div>
+                      </div>
+                      <span className={aberto > 0 ? 'valor-pendente' : 'detalhe'}>
+                        {aberto > 0 ? centavosParaReais(aberto) : 'Em dia'}
+                      </span>
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                  </li>
+                )
+              })}
+              <li className="linha total-linha">
+                <span>Total pendente</span>
+                <span>{centavosParaReais(totalPendenteMeses)}</span>
+              </li>
+            </ul>
+          )}
+        </div>
+      )}
+
+      {escopo !== 'resumo' && (
+        <>
       {escopo === 'mes' && <SeletorMes mes={mes} aoMudar={setMes} />}
 
       <div className="metricas">
@@ -262,6 +341,8 @@ export default function PessoaDetalhe() {
           </ul>
         )}
       </div>
+        </>
+      )}
     </section>
   )
 }

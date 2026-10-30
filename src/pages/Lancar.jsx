@@ -219,14 +219,16 @@ export default function Lancar() {
       {erro && <p className="erro" role="alert">{erro}</p>}
 
       {pessoas.length === 0 && (
-        <p className="aviso">
-          Cadastre ao menos uma pessoa antes de lançar. <Link to="/pessoas">Ir para Pessoas</Link>
-        </p>
+        <div className="aviso aviso-acao">
+          <span>Cadastre ao menos uma pessoa antes de lançar.</span>
+          <Link className="botao-secundario compacto" to="/pessoas">Ir para Pessoas</Link>
+        </div>
       )}
       {tipo === 'cartao' && cartoes.length === 0 && (
-        <p className="aviso">
-          Cadastre um cartão para lançar compras nele. <Link to="/cartoes">Ir para Cartões</Link>
-        </p>
+        <div className="aviso aviso-acao">
+          <span>Cadastre um cartão para lançar compras nele.</span>
+          <Link className="botao-secundario compacto" to="/cartoes">Ir para Cartões</Link>
+        </div>
       )}
 
       <form onSubmit={lancar}>

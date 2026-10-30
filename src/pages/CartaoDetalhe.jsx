@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Receipt, Trash2 } from 'lucide-react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ChevronRight, Pencil, Receipt, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
@@ -27,7 +27,11 @@ const rotuloParcela = (n, total) =>
 export default function CartaoDetalhe() {
   const { id } = useParams()
   const { confirmar, perguntar } = useDialogo()
-  const [mes, setMes] = useState(mesAtual())
+  const [params] = useSearchParams()
+  const mesDoLink = params.get('mes')
+  const [mes, setMes] = useState(
+    mesDoLink && /^\d{4}-\d{2}-01$/.test(mesDoLink) ? mesDeISO(mesDoLink) : mesAtual()
+  )
   const [cartao, setCartao] = useState(null)
   const [fatura, setFatura] = useState(null) // null = não existe fatura neste mês
   const [lancs, setLancs] = useState([])
@@ -233,6 +237,24 @@ export default function CartaoDetalhe() {
   const terceirosPagos = soma(partes.filter((p) => !p.pessoas?.eh_eu && p.pago), (p) => p.valor_centavos)
   const totalEncargos = soma(encargos, (e) => e.valor_centavos)
 
+  // divisão do mês selecionado, por pessoa
+  const mapaDivisao = new Map()
+  partes.forEach((p) => {
+    const atual = mapaDivisao.get(p.pessoa_id) ?? {
+      id: p.pessoa_id,
+      nome: p.pessoas?.nome ?? 'Sem pessoa',
+      euMesmo: !!p.pessoas?.eh_eu,
+      total: 0,
+      pago: 0,
+    }
+    atual.total += p.valor_centavos
+    if (p.pago) atual.pago += p.valor_centavos
+    mapaDivisao.set(p.pessoa_id, atual)
+  })
+  const divisaoMes = [...mapaDivisao.values()].sort(
+    (a, b) => Number(b.euMesmo) - Number(a.euMesmo) || b.total - a.total
+  )
+
   const comprometido = soma(uso, (u) => u.valor_centavos)
   const percentual = cartao.limite_centavos > 0 ? Math.round((comprometido / cartao.limite_centavos) * 100) : 0
   const porPessoa = {}
@@ -269,7 +291,11 @@ export default function CartaoDetalhe() {
         <p className="dica">Soma das faturas ainda abertas, incluindo as parcelas futuras.</p>
         {avisoLimite && <p className="aviso">{avisoLimite}</p>}
         {ranking.length > 0 && (
-          <ul className="lista" style={{ marginTop: 8 }}>
+          <>
+            <p className="dica" style={{ marginTop: 12, fontWeight: 500 }}>
+              Quem usa o limite, somando todas as faturas abertas
+            </p>
+            <ul className="lista" style={{ marginTop: 4 }}>
             {ranking.map(([nome, valor]) => (
               <li key={nome} className="linha">
                 <span>{nome}</span>
@@ -277,12 +303,13 @@ export default function CartaoDetalhe() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </div>
 
       <SeletorMes mes={mes} aoMudar={setMes} />
 
-      {!fatura ? (
+      {!fatura || (lancs.length === 0 && encargos.length === 0) ? (
         <div className="bloco">
           <EstadoVazio
             simples
@@ -326,6 +353,35 @@ export default function CartaoDetalhe() {
               <div className="rotulo">Pendente</div>
               <div className="numero">{centavosParaReais(terceiros - terceirosPagos)}</div>
             </div>
+          </div>
+
+          <div className="bloco">
+            <b>Divisão por pessoa neste mês</b>
+            <ul className="lista">
+              {divisaoMes.map((p) => (
+                <li key={p.id} className="linha">
+                  <Link className="item-link" to={`/pessoas/${p.id}`}>
+                    <div className="item-texto">
+                      <div className="titulo">
+                        {p.nome}
+                        {p.euMesmo && <span className="chip">Você</span>}
+                      </div>
+                      {!p.euMesmo && (
+                        <div className="detalhe">
+                          Pago {centavosParaReais(p.pago)} · pendente {centavosParaReais(p.total - p.pago)}
+                        </div>
+                      )}
+                    </div>
+                    <span className="titulo">{centavosParaReais(p.total)}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+              <li className="linha total-linha">
+                <span>Total das compras</span>
+                <span>{centavosParaReais(totalCompras)}</span>
+              </li>
+            </ul>
           </div>
 
           <div className="bloco">

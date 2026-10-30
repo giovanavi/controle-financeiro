@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Papa from 'papaparse'
+import { CircleCheck } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaReais } from '../utils/dinheiro'
@@ -144,6 +145,8 @@ export default function Importar() {
       importadas: validas.length - falhas.length,
       ignoradas: analise.length - validas.length,
       falhas,
+      cartaoId,
+      mesISO: mesParaISO(mes),
     })
     setLinhas([])
     setNomeArquivo('')
@@ -164,9 +167,10 @@ export default function Importar() {
       {erro && <p className="erro" role="alert">{erro}</p>}
 
       {!temEu && (
-        <p className="aviso">
-          Cadastre o seu perfil antes de importar. <Link to="/pessoas">Ir para Pessoas</Link>
-        </p>
+        <div className="aviso aviso-acao">
+          <span>Cadastre o seu perfil antes de importar.</span>
+          <Link className="botao-secundario compacto" to="/pessoas">Ir para Pessoas</Link>
+        </div>
       )}
 
       <div className="bloco formulario">
@@ -210,24 +214,36 @@ export default function Importar() {
       {erroArquivo && <p className="erro" role="alert">{erroArquivo}</p>}
 
       {resultado && (
-        <div className="sucesso" role="status">
-          <div>
-            {resultado.importadas} compra(s) importada(s)
-            {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}.
-            {cartaoId && (
-              <>
-                {' '}
-                <Link to={`/cartoes/${cartaoId}`}>Ver a fatura do cartão</Link>
-              </>
-            )}
+        <div className="sucesso resultado-importacao" role="status">
+          <div className="resultado-topo">
+            <CircleCheck size={22} aria-hidden="true" />
+            <div>
+              <strong>{resultado.importadas} compra(s) importada(s)</strong>
+              {resultado.ignoradas > 0 && (
+                <div>{resultado.ignoradas} linha(s) ignorada(s) por problemas na prévia.</div>
+              )}
+            </div>
           </div>
           {resultado.falhas.length > 0 && (
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            <ul>
               {resultado.falhas.map((f) => (
                 <li key={f}>{f}</li>
               ))}
             </ul>
           )}
+          <div className="acoes">
+            {resultado.cartaoId && (
+              <Link
+                className="botao-primario pequeno"
+                to={`/cartoes/${resultado.cartaoId}?mes=${resultado.mesISO}`}
+              >
+                Ver fatura do cartão
+              </Link>
+            )}
+            <button className="botao-secundario" onClick={() => setResultado(null)}>
+              Importar outra aba
+            </button>
+          </div>
         </div>
       )}
 

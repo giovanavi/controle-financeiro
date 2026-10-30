@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
 import EstadoVazio from '../components/EstadoVazio'
@@ -182,7 +182,7 @@ export default function Resumo() {
           <div className="bloco secao-resumo">
             <div className="cabecalho-secao">
               <b>Gastos fixos</b>
-              <Link to="/fixos">Ver todos</Link>
+              <Link className="link-acao" to="/fixos">Ver todos <ChevronRight size={16} aria-hidden="true" /></Link>
             </div>
             {dados.fixos.length === 0 ? (
               <p className="suave" style={{ margin: 0 }}>Nenhum gasto fixo neste mês.</p>
@@ -205,7 +205,7 @@ export default function Resumo() {
           <div className="bloco secao-resumo">
             <div className="cabecalho-secao">
               <b>Faturas dos cartões</b>
-              <Link to="/cartoes">Ver cartões</Link>
+              <Link className="link-acao" to="/cartoes">Ver cartões <ChevronRight size={16} aria-hidden="true" /></Link>
             </div>
             {dados.cartoes.length === 0 ? (
               <p className="suave" style={{ margin: 0 }}>Nenhuma fatura neste mês.</p>
@@ -213,13 +213,14 @@ export default function Resumo() {
               <ul className="lista">
                 {dados.cartoes.map((c) => (
                   <li key={c.id} className="linha">
-                    <div>
-                      <Link to={`/cartoes/${c.id}`} className="titulo" style={{ color: 'inherit', textDecoration: 'none' }}>
-                        {c.rotulo}
-                      </Link>
-                      <div className="detalhe">Fatura {centavosParaReais(c.total)}</div>
-                    </div>
-                    <span>{centavosParaReais(c.meu)}</span>
+                    <Link className="item-link" to={`/cartoes/${c.id}?mes=${mesParaISO(mes)}`}>
+                      <div className="item-texto">
+                        <div className="titulo">{c.rotulo}</div>
+                        <div className="detalhe">Fatura {centavosParaReais(c.total)}</div>
+                      </div>
+                      <span>{centavosParaReais(c.meu)}</span>
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </Link>
                   </li>
                 ))}
                 <li className="linha total-linha">
@@ -233,7 +234,7 @@ export default function Resumo() {
           <div className="bloco secao-resumo">
             <div className="cabecalho-secao">
               <b>Extras</b>
-              <Link to="/extras">Ver todos</Link>
+              <Link className="link-acao" to="/extras">Ver todos <ChevronRight size={16} aria-hidden="true" /></Link>
             </div>
             {dados.extras.length === 0 ? (
               <p className="suave" style={{ margin: 0 }}>Nenhum extra neste mês.</p>
