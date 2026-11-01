@@ -1,0 +1,158 @@
+/* ---------- Estados de vencimento (cor + ícone + texto) ---------- */
+.estado-atrasada { background: var(--danger-bg); color: var(--danger-text); }
+.estado-hoje,
+.estado-breve { background: var(--warn-bg); color: var(--warn-text); }
+.estado-paga { background: var(--ok-bg); color: var(--ok-text); }
+.estado-normal,
+.estado-sem { background: var(--bg); color: var(--text-2); }
+
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ---------- Faixa de aviso ---------- */
+.banner-contas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-decoration: none;
+}
+.banner-contas svg { flex-shrink: 0; }
+.banner-texto { flex: 1; min-width: 0; }
+.banner-titulo { font-size: 15px; font-weight: 500; }
+.banner-sub { font-size: 13px; }
+a.banner-contas:hover { filter: brightness(0.97); }
+
+/* ---------- Lista de contas ---------- */
+.grupo-contas { margin-bottom: 8px; }
+.grupo-titulo { margin: 12px 0 6px; font-size: 13px; font-weight: 500; color: var(--text-2); }
+
+.conta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.conta-topo { display: flex; align-items: flex-start; gap: 12px; }
+.conta-nome { display: block; font-size: 15px; font-weight: 500; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+.conta-nome:hover { text-decoration: underline; }
+.conta-valor { font-size: 15px; font-weight: 500; white-space: nowrap; }
+.conta-base { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+.selo-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  line-height: 1.1;
+}
+.selo-data b { font-size: 16px; font-weight: 500; }
+.selo-data span { font-size: 11px; text-transform: lowercase; }
+
+/* ---------- Sino de avisos ---------- */
+.sino { position: relative; flex-shrink: 0; }
+.sino-contador {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #A32D2D;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sino-painel {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.sino-painel.direita { right: 0; }
+.sino-painel.esquerda { left: 0; }
+.sino-titulo { margin-bottom: 4px; font-size: 14px; font-weight: 500; }
+.sino-vazio { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
+.sino-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  color: var(--text);
+  border-radius: 10px;
+  text-decoration: none;
+}
+.sino-item:hover { background: var(--bg); }
+.selo-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+.sino-painel .botao-secundario { margin-top: 6px; }
+
+/* No celular o painel ocupa a largura da tela, abaixo do topo */
+@media (max-width: 767px) {
+  .sino-painel {
+    position: fixed;
+    top: calc(60px + env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}
+
+/* ---------- Marcador numérico nos itens do menu ---------- */
+.icone-com-badge { position: relative; display: inline-flex; }
+.badge-nav {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #A32D2D;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.marca-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

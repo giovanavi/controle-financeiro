@@ -44,6 +44,9 @@ export default function Lancar() {
   const [recorrente, setRecorrente] = useState(tipoInicial === 'fixo')
   const [fim, setFim] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [vencimento, setVencimento] = useState('') // AAAA-MM-DD (gasto avulso)
+  const [diaVenc, setDiaVenc] = useState('') // dia do mês (gasto recorrente)
+  const [estimado, setEstimado] = useState(false)
 
   const [modo, setModo] = useState('igual')
   const [selecionados, setSelecionados] = useState({})
@@ -94,6 +97,17 @@ export default function Lancar() {
           setRecorrente(d.recorrente)
           setFim(d.recorrencia_fim ?? '')
           setObservacao(d.observacao ?? '')
+          setDiaVenc(d.dia_vencimento ? String(d.dia_vencimento) : '')
+          const { data: primeiro } = await supabase
+            .from('lancamentos')
+            .select('vencimento, valor_estimado')
+            .eq('despesa_id', editarId)
+            .order('mes_referencia')
+            .limit(1)
+          if (primeiro && primeiro[0]) {
+            setVencimento(primeiro[0].vencimento ?? '')
+            setEstimado(primeiro[0].valor_estimado)
+          }
           setModo('valor')
           const marcados = {}
           const preenchidos = {}
@@ -152,13 +166,17 @@ export default function Lancar() {
     if (recorrente && fim && fim < data) {
       return setErro('O fim da recorrência é anterior à data inicial.')
     }
+    const diaValido = recorrente && diaVenc.trim() ? Number(diaVenc) : null
+    if (diaValido !== null && (!Number.isInteger(diaValido) || diaValido < 1 || diaValido > 31)) {
+      return setErro('O dia do vencimento deve ser um número de 1 a 31.')
+    }
     if (!divisao.ok) return setErro(divisao.aviso || 'Confira a divisão entre as pessoas.')
 
     // pessoas com valor zero não entram na divisão
     const participacoes = divisao.partes.filter((p) => p.valor_centavos > 0)
 
     setSalvando(true)
-    const { error } = await supabase.rpc(editarId ? 'editar_despesa' : 'criar_despesa', {
+    const { data: novoId, error } = await supabase.rpc(editarId ? 'editar_despesa' : 'criar_despesa', {
       ...(editarId ? { p_despesa_id: editarId } : {}),
       p_descricao: descricao.trim(),
       p_tipo: tipo,
@@ -181,17 +199,34 @@ export default function Lancar() {
       return
     }
 
+    // vencimento e valor estimado (gastos fixos e extras)
+    let avisoVencimento = ''
+    if (tipo !== 'cartao' && (vencimento || diaValido !== null || estimado)) {
+      const { error: erroVenc } = await supabase.rpc('definir_vencimento_despesa', {
+        p_despesa_id: novoId,
+        p_vencimento: recorrente ? null : vencimento || null,
+        p_dia: recorrente ? diaValido : null,
+        p_estimado: estimado,
+      })
+      if (erroVenc) {
+        avisoVencimento = ' Não consegui salvar o vencimento: defina pelo menu do item em Gastos fixos ou Extras.'
+      }
+    }
+
     if (editarId) {
       navigate(tipo === 'cartao' ? `/cartoes/${cartaoId}` : tipo === 'fixo' ? '/fixos' : '/extras')
       return
     }
-    setSucesso(`Despesa "${descricao.trim()}" lançada.`)
+    setSucesso(`Despesa "${descricao.trim()}" lançada.${avisoVencimento}`)
     setDescricao('')
     setValor('')
     setParcelas('1')
     setRecorrente(false)
     setFim('')
     setObservacao('')
+    setVencimento('')
+    setDiaVenc('')
+    setEstimado(false)
     setValores({})
     setPercentuais({})
     setModo('igual')
@@ -327,6 +362,38 @@ export default function Lancar() {
               {recorrente && !fim && (
                 <p className="dica">Sem data final, o sistema gera os próximos 12 meses.</p>
               )}
+            </>
+          )}
+
+          {tipo !== 'cartao' && (
+            <>
+              {recorrente ? (
+                <label className="campo">
+                  Dia do vencimento (opcional)
+                  <input
+                    value={diaVenc}
+                    onChange={(e) => setDiaVenc(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="10"
+                  />
+                </label>
+              ) : (
+                <label className="campo">
+                  Vencimento (opcional)
+                  <CampoData valor={vencimento} aoMudar={setVencimento} />
+                </label>
+              )}
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={estimado}
+                  onChange={(e) => setEstimado(e.target.checked)}
+                />
+                Valor estimado (ajusto quando a conta chegar)
+              </label>
+              <p className="dica">
+                Com o vencimento definido, a conta aparece em Contas a pagar e gera avisos.
+              </p>
             </>
           )}
 

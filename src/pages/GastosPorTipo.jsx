@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pencil, Repeat, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CalendarClock, CircleCheck, Pencil, Repeat, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
 import EstadoVazio from '../components/EstadoVazio'
 import { useDialogo } from '../components/Dialogo'
+import { estadoConta } from '../utils/vencimentos'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
-import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
+import { formatarData, hojeISO, mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago } from '../utils/pagamento'
 import '../faturas.css'
 
@@ -16,7 +17,11 @@ const soma = (lista, f) => lista.reduce((total, item) => total + f(item), 0)
 // Usada para "Gastos fixos" (tipo="fixo") e "Extras" (tipo="extra")
 export default function GastosPorTipo({ tipo, titulo }) {
   const { confirmar, perguntar } = useDialogo()
-  const [mes, setMes] = useState(mesAtual())
+  const [params] = useSearchParams()
+  const mesDoLink = params.get('mes') // ex.: /fixos?mes=2026-11-01 (vindo de Contas a pagar)
+  const [mes, setMes] = useState(
+    mesDoLink && /^\d{4}-\d{2}-01$/.test(mesDoLink) ? mesDeISO(mesDoLink) : mesAtual()
+  )
   const [itens, setItens] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -25,7 +30,7 @@ export default function GastosPorTipo({ tipo, titulo }) {
     const { data, error } = await supabase
       .from('lancamentos')
       .select(
-        'id, valor_centavos, despesas!inner(id, descricao, tipo, recorrente), lancamento_participacoes(id, valor_centavos, pago, pessoas(nome, eh_eu))'
+        'id, valor_centavos, vencimento, conta_paga, conta_paga_em, valor_estimado, despesas!inner(id, descricao, tipo, recorrente, dia_vencimento), lancamento_participacoes(id, valor_centavos, pago, pessoas(nome, eh_eu))'
       )
       .eq('mes_referencia', mesParaISO(mes))
       .eq('despesas.tipo', tipo)
@@ -69,6 +74,66 @@ export default function GastosPorTipo({ tipo, titulo }) {
     })
     if (error) {
       setErro(error.code === 'P0001' ? error.message : 'Não foi possível ajustar o valor.')
+      return
+    }
+    await supabase.from('lancamentos').update({ valor_estimado: false }).eq('id', item.id)
+    await carregar()
+  }
+
+  async function alternarContaPaga(item) {
+    setErro('')
+    const paga = !item.conta_paga
+    const { error } = await supabase
+      .from('lancamentos')
+      .update({ conta_paga: paga, conta_paga_em: paga ? hojeISO() : null })
+      .eq('id', item.id)
+    if (error) setErro('Não foi possível atualizar o pagamento da conta.')
+    await carregar()
+  }
+
+  async function definirVencimento(item) {
+    const recorrente = item.despesas.recorrente
+    const atual = recorrente
+      ? item.despesas.dia_vencimento
+        ? String(item.despesas.dia_vencimento)
+        : ''
+      : item.vencimento
+        ? formatarData(item.vencimento)
+        : ''
+    const texto = await perguntar({
+      titulo: 'Definir vencimento',
+      mensagem: recorrente
+        ? `${item.despesas.descricao}: informe o dia do mês em que a conta vence. Vale para todos os meses ainda não pagos.`
+        : `${item.despesas.descricao}: informe a data de vencimento.`,
+      rotulo: recorrente ? 'Dia do vencimento (1 a 31)' : 'Data de vencimento (dd/mm/aaaa)',
+      placeholder: recorrente ? '10' : '15/11/2026',
+      valorInicial: atual,
+      inputMode: 'numeric',
+      confirmar: 'Salvar vencimento',
+    })
+    if (texto === null) return
+
+    let argumentos
+    if (recorrente) {
+      const dia = Number(texto.trim())
+      if (!Number.isInteger(dia) || dia < 1 || dia > 31) return setErro('Informe um dia de 1 a 31.')
+      argumentos = { p_dia: dia }
+    } else {
+      const m = texto.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+      const d = m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null
+      const existe =
+        d && d.getFullYear() === Number(m[3]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[1])
+      if (!existe) return setErro('Informe uma data válida no formato dd/mm/aaaa.')
+      argumentos = { p_vencimento: `${m[3]}-${m[2]}-${m[1]}` }
+    }
+
+    setErro('')
+    const { error } = await supabase.rpc('definir_vencimento_despesa', {
+      p_despesa_id: item.despesas.id,
+      ...argumentos,
+    })
+    if (error) {
+      setErro(error.code === 'P0001' ? error.message : 'Não foi possível salvar o vencimento.')
       return
     }
     await carregar()
@@ -145,6 +210,11 @@ export default function GastosPorTipo({ tipo, titulo }) {
               const partes = item.lancamento_participacoes
               const minha = soma(partes.filter((p) => p.pessoas?.eh_eu), (p) => p.valor_centavos)
               const dividida = partes.length > 1 || !partes[0]?.pessoas?.eh_eu
+              const est = estadoConta({
+                venc: item.vencimento,
+                paga: item.conta_paga,
+                pagaEm: item.conta_paga_em,
+              })
               return (
                 <li key={item.id} className="item-lanc">
                   <div className="topo">
@@ -156,12 +226,27 @@ export default function GastosPorTipo({ tipo, titulo }) {
                       {dividida && (
                         <div className="detalhe">Total {centavosParaReais(item.valor_centavos)}</div>
                       )}
+                      {item.vencimento || item.conta_paga ? (
+                        <div className="detalhe">
+                          {item.vencimento && `Vence ${formatarData(item.vencimento)} · `}
+                          <span className={`estado estado-${est.chave}`}>{est.texto}</span>
+                          {item.valor_estimado && !item.conta_paga && ' · valor estimado'}
+                        </div>
+                      ) : (
+                        <div className="detalhe">Sem vencimento definido</div>
+                      )}
                     </div>
                     <div className="valor-com-menu">
                       <span className="titulo">{centavosParaReais(minha)}</span>
                       <MenuAcoes
                         itens={[
                           { rotulo: 'Editar', Icone: Pencil, para: `/lancar?editar=${item.despesas.id}` },
+                          {
+                            rotulo: item.conta_paga ? 'Desfazer pagamento' : 'Marcar como paga',
+                            Icone: CircleCheck,
+                            aoClicar: () => alternarContaPaga(item),
+                          },
+                          { rotulo: 'Definir vencimento', Icone: CalendarClock, aoClicar: () => definirVencimento(item) },
                           { rotulo: 'Ajustar valor do mês', Icone: SlidersHorizontal, aoClicar: () => ajustarValor(item) },
                           {
                             rotulo: item.despesas.recorrente ? 'Excluir só este mês' : 'Excluir',

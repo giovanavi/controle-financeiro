@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CalendarDays, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
+import BannerContas from '../components/BannerContas'
 import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
@@ -103,6 +104,8 @@ export default function Resumo() {
       <div className="cabecalho-pagina">
         <h1>Resumo</h1>
       </div>
+
+      <BannerContas para="/contas" />
 
       <SeletorMes mes={mes} aoMudar={setMes} />
 

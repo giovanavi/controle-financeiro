@@ -12,6 +12,8 @@ import Categorias from './pages/Categorias'
 import Lancar from './pages/Lancar'
 import GastosPorTipo from './pages/GastosPorTipo'
 import Importar from './pages/Importar'
+import ContasAPagar from './pages/ContasAPagar'
+import { AvisosProvider } from './components/AvisosContext'
 
 export default function App() {
   // undefined = ainda verificando; null = sem login; objeto = logado
@@ -32,7 +34,13 @@ export default function App() {
 
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route
+        element={
+          <AvisosProvider>
+            <Layout />
+          </AvisosProvider>
+        }
+      >
         <Route index element={<Navigate to="/resumo" replace />} />
         <Route path="/resumo" element={<Resumo />} />
         <Route path="/cartoes" element={<Cartoes />} />
@@ -41,6 +49,7 @@ export default function App() {
         <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/lancar" element={<Lancar />} />
+        <Route path="/contas" element={<ContasAPagar />} />
         <Route path="/importar" element={<Importar />} />
         <Route path="/fixos" element={<GastosPorTipo tipo="fixo" titulo="Gastos fixos" />} />
         <Route path="/extras" element={<GastosPorTipo tipo="extra" titulo="Extras" />} />
