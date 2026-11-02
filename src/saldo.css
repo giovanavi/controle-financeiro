@@ -1,0 +1,22 @@
+.saldo { display: flex; flex-direction: column; gap: 10px; }
+
+.saldo-grande { font-size: 1.9rem; font-weight: 500; line-height: 1.2; }
+.saldo-grande.negativo { color: var(--danger-text); }
+
+.saldo-linha {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.saldo-linha > span:last-child { flex-shrink: 0; font-weight: 500; white-space: nowrap; }
+.saldo-linha .sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-2);
+  white-space: normal;
+}
+
+.barra.media > span { background: #BA7517; }

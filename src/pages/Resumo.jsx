@@ -4,6 +4,7 @@ import { CalendarDays, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
 import BannerContas from '../components/BannerContas'
+import CartaoSaldo from '../components/CartaoSaldo'
 import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
@@ -28,7 +29,7 @@ export default function Resumo() {
 
   const carregar = useCallback(async () => {
     const mesISO = mesParaISO(mes)
-    const [p, e, f] = await Promise.all([
+    const [p, e, f, rc] = await Promise.all([
       supabase
         .from('lancamento_participacoes')
         .select(
@@ -44,6 +45,7 @@ export default function Resumo() {
         .select('valor_centavos, despesas!inner(tipo)')
         .eq('despesas.tipo', 'cartao')
         .gt('mes_referencia', mesISO),
+      supabase.from('receitas').select('valor_centavos, recebida').eq('mes_referencia', mesISO),
     ])
 
     if (p.error || e.error || f.error) {
@@ -57,12 +59,14 @@ export default function Resumo() {
     const extras = new Map()
     const cartoes = new Map()
     let pendenteTerceiros = 0
+    let pagoTerceiros = 0
 
     for (const x of p.data) {
       const lanc = x.lancamentos
       const desp = lanc.despesas
       const minha = !!x.pessoas?.eh_eu
       if (!minha && !x.pago) pendenteTerceiros += x.valor_centavos
+      if (!minha && x.pago) pagoTerceiros += x.valor_centavos
 
       if (desp.tipo === 'fixo') {
         acumular(fixos, lanc.id, desp.descricao, x.valor_centavos, minha, lanc.id)
@@ -78,6 +82,10 @@ export default function Resumo() {
       extras: lista(extras),
       cartoes: lista(cartoes),
       pendenteTerceiros,
+      pagoTerceiros,
+      receitasDisponiveis: !rc.error,
+      receitaPrevista: rc.error ? 0 : somar(rc.data, 'valor_centavos'),
+      receitaRecebida: rc.error ? 0 : somar(rc.data.filter((r) => r.recebida), 'valor_centavos'),
       encargos: somar(e.data, 'valor_centavos'),
       parcelado: somar(f.data, 'valor_centavos'),
     })
@@ -95,6 +103,8 @@ export default function Resumo() {
   const meuExtras = dados ? somar(dados.extras, 'meu') : 0
   const totalCartoes = dados ? somar(dados.cartoes, 'total') : 0
   const gastoReal = meuFixos + meuCartoes + meuExtras
+  const totalFixos = dados ? somar(dados.fixos, 'total') : 0
+  const totalExtras = dados ? somar(dados.extras, 'total') : 0
   const vazio = dados && !dados.fixos.length && !dados.extras.length && !dados.cartoes.length
   const atual = mesAtual()
   const ehMesAtual = atual.ano === mes.ano && atual.mes === mes.mes
@@ -119,6 +129,18 @@ export default function Resumo() {
             <div className="grande">{centavosParaReais(gastoReal)}</div>
             <div className="rotulo">Gastos fixos + minha parte nas faturas + extras</div>
           </div>
+
+          <CartaoSaldo
+            mesISO={mesParaISO(mes)}
+            receitaPrevista={dados.receitaPrevista}
+            receitaRecebida={dados.receitaRecebida}
+            receitasDisponiveis={dados.receitasDisponiveis}
+            gastoReal={gastoReal}
+            encargos={dados.encargos}
+            saidas={{ fixos: totalFixos, faturas: totalCartoes, extras: totalExtras, encargos: dados.encargos }}
+            reembolsoRecebido={dados.pagoTerceiros}
+            reembolsoPendente={dados.pendenteTerceiros}
+          />
 
           {vazio && (
             <>
