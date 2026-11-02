@@ -4,10 +4,11 @@ import '../dialogo.css'
 const DialogoContext = createContext(null)
 
 // Uso nas telas:
-//   const { confirmar, perguntar } = useDialogo()
+//   const { confirmar, perguntar, escolher } = useDialogo()
 //   const ok = await confirmar({ titulo, mensagem, detalhes: [['Rótulo', 'valor']], aviso, confirmar: 'Excluir', perigo: true })
 //   const texto = await perguntar({ titulo, mensagem, rotulo, valorInicial, placeholder, inputMode, confirmar: 'Salvar' })
-//     (confirmar devolve true/false; perguntar devolve o texto, ou null se cancelar)
+//   const escolha = await escolher({ titulo, mensagem, opcoes: [{ valor: 'este', rotulo: 'Só este mês' }, ...], perigo })
+//     (confirmar devolve true/false; perguntar devolve o texto ou null; escolher devolve o "valor" da opção ou null)
 export function useDialogo() {
   return useContext(DialogoContext)
 }
@@ -29,6 +30,7 @@ function Caixa({ tipo, opcoes, aoFechar }) {
 
   const enviar = (evento) => {
     evento.preventDefault()
+    if (tipo === 'escolher') return
     aoFechar(tipo === 'confirmar' ? true : valor)
   }
 
@@ -76,9 +78,23 @@ function Caixa({ tipo, opcoes, aoFechar }) {
           <button type="button" className="botao-secundario" onClick={cancelar}>
             {opcoes.cancelar ?? 'Cancelar'}
           </button>
-          <button type="submit" className={opcoes.perigo ? 'botao-perigo' : 'botao-primario pequeno'}>
-            {opcoes.confirmar ?? (tipo === 'perguntar' ? 'Salvar' : 'Confirmar')}
-          </button>
+
+          {tipo === 'escolher' ? (
+            opcoes.opcoes.map((o) => (
+              <button
+                key={o.valor}
+                type="button"
+                className={opcoes.perigo ? 'botao-perigo' : 'botao-primario pequeno'}
+                onClick={() => aoFechar(o.valor)}
+              >
+                {o.rotulo}
+              </button>
+            ))
+          ) : (
+            <button type="submit" className={opcoes.perigo ? 'botao-perigo' : 'botao-primario pequeno'}>
+              {opcoes.confirmar ?? (tipo === 'perguntar' ? 'Salvar' : 'Confirmar')}
+            </button>
+          )}
         </div>
       </form>
     </dialog>
@@ -94,7 +110,8 @@ export function DialogoProvider({ children }) {
   )
   const confirmar = useCallback((opcoes) => abrir('confirmar', opcoes), [abrir])
   const perguntar = useCallback((opcoes) => abrir('perguntar', opcoes), [abrir])
-  const valor = useMemo(() => ({ confirmar, perguntar }), [confirmar, perguntar])
+  const escolher = useCallback((opcoes) => abrir('escolher', opcoes), [abrir])
+  const valor = useMemo(() => ({ confirmar, perguntar, escolher }), [confirmar, perguntar, escolher])
 
   function fechar(resultado) {
     aberto.resolver(resultado)

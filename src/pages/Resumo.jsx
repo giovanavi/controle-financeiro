@@ -103,6 +103,7 @@ export default function Resumo() {
     <section>
       <div className="cabecalho-pagina">
         <h1>Resumo</h1>
+        <Link className="botao-secundario compacto" to="/receitas">Receitas</Link>
       </div>
 
       <BannerContas para="/contas" />
