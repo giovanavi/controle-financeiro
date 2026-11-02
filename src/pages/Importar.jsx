@@ -7,12 +7,14 @@ import SeletorMes from '../components/SeletorMes'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
 import { analisarLinhas, lerPlanilha, normalizar } from '../utils/importacao'
+import { categoriaPorRegras } from '../utils/categorias'
 import '../importar.css'
 
 export default function Importar() {
   const [pessoas, setPessoas] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [categorias, setCategorias] = useState([])
+  const [regras, setRegras] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
@@ -37,10 +39,11 @@ export default function Importar() {
 
   useEffect(() => {
     async function carregar() {
-      const [p, c, k] = await Promise.all([
+      const [p, c, k, r] = await Promise.all([
         supabase.from('pessoas').select('*'),
         supabase.from('cartoes').select('*').eq('ativo', true).order('nome'),
         supabase.from('categorias').select('*').order('nome'),
+        supabase.from('regras_categoria').select('*'),
       ])
       if (p.error || c.error || k.error) {
         setErro('Não foi possível carregar os cadastros.')
@@ -48,6 +51,7 @@ export default function Importar() {
         setPessoas(p.data)
         setCartoes(c.data)
         setCategorias(k.data)
+        setRegras(r.error ? [] : r.data)
       }
       setCarregando(false)
     }
@@ -115,6 +119,10 @@ export default function Importar() {
     await carregarPessoas()
   }
 
+  // categoria escolhida para todas as compras; se vazia, vale a regra de categoria da descrição
+  const categoriaDaLinha = (l) => categoriaId || categoriaPorRegras(l.descricao, regras)?.categoria_id || null
+  const nomeCategoria = (id) => categorias.find((cat) => cat.id === id)?.nome ?? '—'
+
   async function importar() {
     setErro('')
     setImportando(true)
@@ -130,7 +138,7 @@ export default function Importar() {
         p_parcela_atual: l.atual,
         p_total_parcelas: l.totalParcelas,
         p_participacoes: l.participacoes,
-        p_categoria_id: categoriaId || null,
+        p_categoria_id: categoriaDaLinha(l),
         p_observacao: 'Importado da planilha',
       })
       if (error) {
@@ -196,7 +204,7 @@ export default function Importar() {
         </div>
 
         <label className="campo">
-          Categoria para todas as compras (opcional)
+          Categoria para todas as compras (opcional; sem escolher, valem as suas regras)
           <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
             <option value="">Sem categoria</option>
             {categorias.map((c) => (
@@ -277,6 +285,7 @@ export default function Importar() {
                     <th className="num">Meu</th>
                     <th className="num">Outros</th>
                     <th>Quem</th>
+                    <th>Categoria</th>
                     <th>Situação</th>
                   </tr>
                 </thead>
@@ -290,6 +299,7 @@ export default function Importar() {
                       <td className="num">{centavosParaReais(l.meuCent)}</td>
                       <td className="num">{centavosParaReais(l.outrosCent)}</td>
                       <td>{l.nomeQuem || '—'}</td>
+                      <td>{nomeCategoria(categoriaDaLinha(l))}</td>
                       <td>
                         {l.problemas.length > 0 ? (
                           <span className="situacao-erro">{l.problemas.join('; ')}</span>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
@@ -91,6 +92,7 @@ export default function Categorias() {
     <section>
       <div className="cabecalho-pagina">
         <h1>Categorias</h1>
+        <Link className="botao-secundario" to="/categorizar">Categorizar compras</Link>
       </div>
 
       {erro && <p className="erro" role="alert">{erro}</p>}

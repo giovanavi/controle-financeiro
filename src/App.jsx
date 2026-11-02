@@ -13,6 +13,7 @@ import Lancar from './pages/Lancar'
 import GastosPorTipo from './pages/GastosPorTipo'
 import Importar from './pages/Importar'
 import ContasAPagar from './pages/ContasAPagar'
+import Categorizar from './pages/Categorizar'
 import { AvisosProvider } from './components/AvisosContext'
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/pessoas" element={<Pessoas />} />
         <Route path="/pessoas/:id" element={<PessoaDetalhe />} />
         <Route path="/categorias" element={<Categorias />} />
+        <Route path="/categorizar" element={<Categorizar />} />
         <Route path="/lancar" element={<Lancar />} />
         <Route path="/contas" element={<ContasAPagar />} />
         <Route path="/importar" element={<Importar />} />

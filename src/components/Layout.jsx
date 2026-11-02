@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { House, CalendarClock, CreditCard, Users, Plus, Repeat, Sparkles, Tag, Upload, LogOut } from 'lucide-react'
+import { House, CalendarClock, CreditCard, Users, Plus, Repeat, Sparkles, Tag, ListChecks, Upload, LogOut } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useAvisos } from './AvisosContext'
 import Sino from './Sino'
@@ -17,6 +17,7 @@ const itensSecundarios = [
   { para: '/fixos', rotulo: 'Gastos fixos', Icone: Repeat },
   { para: '/extras', rotulo: 'Extras', Icone: Sparkles },
   { para: '/categorias', rotulo: 'Categorias', Icone: Tag },
+  { para: '/categorizar', rotulo: 'Categorizar', Icone: ListChecks },
   { para: '/importar', rotulo: 'Importar', Icone: Upload },
 ]
 
