@@ -9,6 +9,7 @@ import {
   somarDias,
   vencimentoDaFatura,
 } from '../utils/vencimentos'
+import { carregarOrcamentoMes } from '../utils/orcamento'
 import '../contas.css'
 
 const AvisosContext = createContext(null)
@@ -30,6 +31,7 @@ function valorAReceber(lancamentos) {
 export function AvisosProvider({ children }) {
   const [itens, setItens] = useState([])
   const [semVencimento, setSemVencimento] = useState(0)
+  const [orcamento, setOrcamento] = useState({ linhas: [], semCategoria: 0 })
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const local = useLocation()
@@ -119,6 +121,9 @@ export function AvisosProvider({ children }) {
 
     setItens(todos)
     setCarregando(false)
+
+    // orçamento do mês atual (alimenta o sino); falhas aqui não atrapalham as contas
+    carregarOrcamentoMes(supabase, mesParaISO(mesAtual())).then(setOrcamento).catch(() => {})
   }, [])
 
   // recarrega ao abrir o app e a cada troca de tela (marcações feitas em outras telas aparecem nos avisos)
@@ -146,6 +151,15 @@ export function AvisosProvider({ children }) {
     [recarregar]
   )
 
+  // categorias com limite que passaram dele ou estão a partir de 80%
+  const alertasOrcamento = useMemo(
+    () =>
+      orcamento.linhas
+        .filter((l) => l.limite > 0 && (l.estado.chave === 'atrasada' || l.estado.chave === 'breve'))
+        .sort((a, b) => b.estado.pct - a.estado.pct),
+    [orcamento]
+  )
+
   // contas não pagas atrasadas ou que vencem em até DIAS_DE_AVISO dias
   const alertas = useMemo(
     () =>
@@ -156,8 +170,8 @@ export function AvisosProvider({ children }) {
   )
 
   const valor = useMemo(
-    () => ({ itens, alertas, semVencimento, carregando, erro, recarregar, marcarPaga }),
-    [itens, alertas, semVencimento, carregando, erro, recarregar, marcarPaga]
+    () => ({ itens, alertas, alertasOrcamento, semVencimento, carregando, erro, recarregar, marcarPaga }),
+    [itens, alertas, alertasOrcamento, semVencimento, carregando, erro, recarregar, marcarPaga]
   )
 
   return <AvisosContext.Provider value={valor}>{children}</AvisosContext.Provider>

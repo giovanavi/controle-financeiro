@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, Clock, TriangleAlert } from 'lucide-react'
+import { Bell, Clock, Target, TriangleAlert } from 'lucide-react'
 import { useAvisos } from './AvisosContext'
 import { centavosParaReais } from '../utils/dinheiro'
 import { DIAS_DE_AVISO } from '../utils/vencimentos'
 
 // alinhar: lado em que o painel abre ('direita' no topo do celular, 'esquerda' no menu lateral)
 export default function Sino({ alinhar = 'direita' }) {
-  const { alertas } = useAvisos()
+  const { alertas, alertasOrcamento } = useAvisos()
   const [aberto, setAberto] = useState(false)
   const raiz = useRef(null)
   const local = useLocation()
@@ -36,7 +36,7 @@ export default function Sino({ alinhar = 'direita' }) {
     }
   }, [aberto])
 
-  const total = alertas.length
+  const total = alertas.length + alertasOrcamento.length
 
   return (
     <div className="sino" ref={raiz}>
@@ -57,25 +57,42 @@ export default function Sino({ alinhar = 'direita' }) {
 
           {total === 0 ? (
             <p className="sino-vazio">
-              Nenhuma conta atrasada ou vencendo nos próximos {DIAS_DE_AVISO} dias.
+              Nenhuma conta atrasada ou vencendo nos próximos {DIAS_DE_AVISO} dias, e nenhuma categoria perto do limite.
             </p>
           ) : (
-            alertas.map((a) => {
-              const Icone = a.est.chave === 'atrasada' ? TriangleAlert : Clock
-              return (
-                <Link key={a.chave} to="/contas" className="sino-item">
-                  <span className={`selo-mini estado-${a.est.chave}`}>
-                    <Icone size={16} aria-hidden="true" />
+            <>
+              {alertas.map((a) => {
+                const Icone = a.est.chave === 'atrasada' ? TriangleAlert : Clock
+                return (
+                  <Link key={a.chave} to="/contas" className="sino-item">
+                    <span className={`selo-mini estado-${a.est.chave}`}>
+                      <Icone size={16} aria-hidden="true" />
+                    </span>
+                    <div className="item-texto">
+                      <div className="titulo">{a.nome}</div>
+                      <div className="detalhe">
+                        {a.est.texto} · {centavosParaReais(a.valor)}
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+              {alertasOrcamento.map((o) => (
+                <Link key={o.id} to="/orcamento" className="sino-item">
+                  <span className={`selo-mini estado-${o.estado.chave}`}>
+                    <Target size={16} aria-hidden="true" />
                   </span>
                   <div className="item-texto">
-                    <div className="titulo">{a.nome}</div>
+                    <div className="titulo">
+                      {o.nome}: {o.estado.chave === 'atrasada' ? 'passou do limite' : `${o.estado.pct}% do limite`}
+                    </div>
                     <div className="detalhe">
-                      {a.est.texto} · {centavosParaReais(a.valor)}
+                      {centavosParaReais(o.gasto)} de {centavosParaReais(o.limite)} · {o.estado.texto}
                     </div>
                   </div>
                 </Link>
-              )
-            })
+              ))}
+            </>
           )}
 
           <Link to="/contas" className="botao-secundario compacto">

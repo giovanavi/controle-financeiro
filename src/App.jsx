@@ -15,6 +15,7 @@ import Importar from './pages/Importar'
 import ContasAPagar from './pages/ContasAPagar'
 import Categorizar from './pages/Categorizar'
 import Receitas from './pages/Receitas'
+import Orcamento from './pages/Orcamento'
 import { AvisosProvider } from './components/AvisosContext'
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/lancar" element={<Lancar />} />
         <Route path="/contas" element={<ContasAPagar />} />
         <Route path="/receitas" element={<Receitas />} />
+        <Route path="/orcamento" element={<Orcamento />} />
         <Route path="/importar" element={<Importar />} />
         <Route path="/fixos" element={<GastosPorTipo tipo="fixo" titulo="Gastos fixos" />} />
         <Route path="/extras" element={<GastosPorTipo tipo="extra" titulo="Extras" />} />

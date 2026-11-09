@@ -5,6 +5,8 @@ import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
 import BannerContas from '../components/BannerContas'
 import CartaoSaldo from '../components/CartaoSaldo'
+import CartaoOrcamento from '../components/CartaoOrcamento'
+import { carregarOrcamentoMes } from '../utils/orcamento'
 import EstadoVazio from '../components/EstadoVazio'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
@@ -29,7 +31,7 @@ export default function Resumo() {
 
   const carregar = useCallback(async () => {
     const mesISO = mesParaISO(mes)
-    const [p, e, f, rc] = await Promise.all([
+    const [p, e, f, rc, orc] = await Promise.all([
       supabase
         .from('lancamento_participacoes')
         .select(
@@ -46,6 +48,7 @@ export default function Resumo() {
         .eq('despesas.tipo', 'cartao')
         .gt('mes_referencia', mesISO),
       supabase.from('receitas').select('valor_centavos, recebida').eq('mes_referencia', mesISO),
+      carregarOrcamentoMes(supabase, mesISO),
     ])
 
     if (p.error || e.error || f.error) {
@@ -84,6 +87,7 @@ export default function Resumo() {
       pendenteTerceiros,
       pagoTerceiros,
       receitasDisponiveis: !rc.error,
+      orcamento: orc,
       receitaPrevista: rc.error ? 0 : somar(rc.data, 'valor_centavos'),
       receitaRecebida: rc.error ? 0 : somar(rc.data.filter((r) => r.recebida), 'valor_centavos'),
       encargos: somar(e.data, 'valor_centavos'),
@@ -141,6 +145,8 @@ export default function Resumo() {
             reembolsoRecebido={dados.pagoTerceiros}
             reembolsoPendente={dados.pendenteTerceiros}
           />
+
+          <CartaoOrcamento orcamento={dados.orcamento} mesISO={mesParaISO(mes)} />
 
           {vazio && (
             <>
