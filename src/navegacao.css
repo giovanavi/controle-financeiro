@@ -1,0 +1,120 @@
+/* ---------- Botão "Mais" na barra de baixo (é um <button> com a aparência de .item) ---------- */
+.barra-inferior button.item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+/* ---------- Botão flutuante de lançar (só no celular) ---------- */
+.botao-flutuante {
+  position: fixed;
+  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  text-decoration: none;
+  transition: transform 0.1s, background 0.15s;
+}
+.botao-flutuante:hover { background: var(--primary-hover); }
+.botao-flutuante:active { transform: scale(0.94); }
+.botao-flutuante:focus-visible { outline: 3px solid var(--primary-soft); outline-offset: 2px; }
+
+/* o botão flutuante não pode cobrir o fim das páginas */
+.app .conteudo main { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+
+/* ---------- Folha "Mais" ---------- */
+dialog.folha {
+  position: fixed;
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  margin: 0 auto;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+}
+dialog.folha::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog.folha[open] { animation: folha-subir 0.22s ease-out; }
+@keyframes folha-subir {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.folha[open] { animation: none; }
+}
+
+.folha-alca { width: 40px; height: 4px; margin: 4px auto 12px; background: var(--border); border-radius: 2px; }
+.folha-titulo { margin-bottom: 8px; font-size: 1.1rem; font-weight: 500; }
+.folha-grupo { margin-bottom: 12px; }
+.folha-grupo-titulo { margin-bottom: 6px; font-size: 12px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.folha-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.folha-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 14px;
+  font-size: 15px;
+  text-decoration: none;
+}
+.folha-item:hover { background: var(--primary-soft); }
+.folha-item.ativo { background: var(--primary-soft); color: var(--on-primary-soft); }
+.folha-item svg { flex-shrink: 0; }
+
+.folha-sair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  background: transparent;
+  color: var(--danger-text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.folha-sair:hover { background: var(--bg); }
+
+/* ---------- Menu lateral do notebook, agrupado ---------- */
+.lancar-lateral { margin: 0 4px 12px; }
+.grupo-menu { display: flex; flex-direction: column; gap: 2px; }
+.grupo-menu-titulo {
+  padding: 14px 12px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (min-width: 768px) {
+  .botao-flutuante { display: none; }
+  .app .conteudo main { padding-bottom: 32px; }
+  .menu-lateral { overflow-y: auto; }
+}
