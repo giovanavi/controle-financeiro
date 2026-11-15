@@ -6,9 +6,12 @@ import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import MenuAcoes from '../components/MenuAcoes'
 import EstadoVazio from '../components/EstadoVazio'
+import BotaoExportar from '../components/BotaoExportar'
 import { centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { formatarData, hojeISO, mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago, salvarObservacaoPagamento } from '../utils/pagamento'
+import { dadosExportacaoCartao, exportarCartaoExcel, exportarCartaoPDF } from '../utils/exportacao'
+import { vencimentoDaFatura } from '../utils/vencimentos'
 import '../faturas.css'
 
 const TIPOS_ENCARGO = [
@@ -217,6 +220,24 @@ export default function CartaoDetalhe() {
     await carregar()
   }
 
+  async function exportar(formato) {
+    setErro('')
+    try {
+      const dados = dadosExportacaoCartao({
+        cartao,
+        mes,
+        lancs,
+        encargos,
+        vencimentoISO: vencimentoDaFatura(mesParaISO(mes), cartao.dia_vencimento),
+      })
+      if (formato === 'xlsx') await exportarCartaoExcel(dados)
+      else await exportarCartaoPDF(dados)
+    } catch (e) {
+      console.error(e)
+      setErro('Não foi possível gerar o arquivo. Confira se as bibliotecas de exportação foram instaladas (npm install exceljs jspdf jspdf-autotable).')
+    }
+  }
+
   if (carregando) return <p className="suave">Carregando…</p>
   if (!cartao) {
     return (
@@ -274,6 +295,7 @@ export default function CartaoDetalhe() {
         <span className="detalhe">
           Fecha dia {cartao.dia_fechamento} · vence dia {cartao.dia_vencimento}
         </span>
+        {fatura && lancs.length > 0 && <BotaoExportar aoExportar={exportar} />}
       </div>
 
       {erro && <p className="erro" role="alert">{erro}</p>}

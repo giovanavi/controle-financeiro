@@ -5,9 +5,11 @@ import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
 import SeletorMes from '../components/SeletorMes'
 import EstadoVazio from '../components/EstadoVazio'
+import BotaoExportar from '../components/BotaoExportar'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { definirPago, definirPagoVarios, salvarObservacaoPagamento } from '../utils/pagamento'
+import { dadosExportacaoPessoa, exportarPessoaExcel, exportarPessoaPDF } from '../utils/exportacao'
 import '../faturas.css'
 
 const soma = (lista, f) => lista.reduce((total, item) => total + f(item), 0)
@@ -132,6 +134,18 @@ export default function PessoaDetalhe() {
     await carregar()
   }
 
+  async function exportar(formato) {
+    setErro('')
+    try {
+      const dados = dadosExportacaoPessoa({ pessoa, itens, escopo, mes })
+      if (formato === 'xlsx') await exportarPessoaExcel(dados)
+      else await exportarPessoaPDF(dados)
+    } catch (e) {
+      console.error(e)
+      setErro('Não foi possível gerar o arquivo. Confira se as bibliotecas de exportação foram instaladas (npm install exceljs jspdf jspdf-autotable).')
+    }
+  }
+
   if (carregando) return <p className="suave">Carregando…</p>
   if (!pessoa) {
     return (
@@ -148,6 +162,10 @@ export default function PessoaDetalhe() {
   const atribuido = soma(itens, (x) => x.valor_centavos)
   const pago = soma(itens.filter((x) => x.pago), (x) => x.valor_centavos)
   const pendente = atribuido - pago
+  // quanto da pessoa vem de cada origem (cada cartão, gasto fixo e extra); origens sem valor ficam de fora
+  const mapaOrigem = new Map()
+  itens.forEach((x) => mapaOrigem.set(origem(x), (mapaOrigem.get(origem(x)) ?? 0) + x.valor_centavos))
+  const porOrigem = [...mapaOrigem].filter(([, valor]) => valor > 0).sort((a, b) => b[1] - a[1])
   const linhasMeses = resumoMeses.filter((m) => !soPendentes || m.atribuido - m.pago > 0)
   const totalPendenteMeses = soma(linhasMeses, (m) => m.atribuido - m.pago)
 
@@ -166,6 +184,7 @@ export default function PessoaDetalhe() {
           {pessoa.nome}
           {ehEu && <span className="chip">Você</span>}
         </h1>
+        {escopo !== 'resumo' && <BotaoExportar aoExportar={exportar} desabilitado={itens.length === 0} />}
       </div>
 
       {erro && <p className="erro" role="alert">{erro}</p>}
@@ -270,6 +289,22 @@ export default function PessoaDetalhe() {
           </>
         )}
       </div>
+
+      {porOrigem.length > 0 && (
+        <div className="bloco">
+          <div className="cabecalho-secao">
+            <b>{escopo === 'mes' ? 'Por origem neste mês' : 'Pendente por origem'}</b>
+          </div>
+          <ul className="lista">
+            {porOrigem.map(([nome, valor]) => (
+              <li key={nome} className="linha">
+                <span>{nome}</span>
+                <span className="titulo">{centavosParaReais(valor)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!ehEu && escopo === 'mes' && (
         <div className="faixa-filtros">
