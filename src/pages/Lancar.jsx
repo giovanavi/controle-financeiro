@@ -2,10 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import CampoData from '../components/CampoData'
+import CampoDescricao from '../components/CampoDescricao'
+import CampoMoeda, { formatarMoedaDigitada } from '../components/CampoMoeda'
+import { normalizar } from '../utils/importacao'
+import { categoriaPorRegras } from '../utils/categorias'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { calcularDivisao } from '../utils/divisao'
 import { mesDaFatura, nomeDoMes } from '../utils/faturas'
 import '../lancar.css'
+import '../lancamento.css'
 
 const TIPOS = [
   { valor: 'cartao', rotulo: 'Compra no cartão' },
@@ -20,6 +25,19 @@ const MODOS = [
 ]
 
 const hoje = () => new Date().toLocaleDateString('en-CA') // AAAA-MM-DD no fuso local
+
+// Descrições já usadas, da mais recente para a mais antiga, sem repetir, com a categoria de cada uma
+function montarHistorico(despesas) {
+  const vistos = new Set()
+  const lista = []
+  for (const d of despesas) {
+    const norm = normalizar(d.descricao)
+    if (!norm || vistos.has(norm)) continue
+    vistos.add(norm)
+    lista.push({ descricao: d.descricao, categoriaId: d.categoria_id, norm })
+  }
+  return lista
+}
 
 export default function Lancar() {
   const [params] = useSearchParams() // /lancar?tipo=fixo ou ?tipo=extra ou ?editar=<id da despesa>
@@ -44,6 +62,10 @@ export default function Lancar() {
   const [recorrente, setRecorrente] = useState(tipoInicial === 'fixo')
   const [fim, setFim] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [regras, setRegras] = useState([])
+  const [historico, setHistorico] = useState([])
+  const [categoriaManual, setCategoriaManual] = useState(false) // true depois que você escolhe a categoria
+  const [dicaCategoria, setDicaCategoria] = useState('')
   const [vencimento, setVencimento] = useState('') // AAAA-MM-DD (gasto avulso)
   const [diaVenc, setDiaVenc] = useState('') // dia do mês (gasto recorrente)
   const [estimado, setEstimado] = useState(false)
@@ -55,13 +77,19 @@ export default function Lancar() {
 
   useEffect(() => {
     async function carregar() {
-      const [p, c, k] = await Promise.all([
+      const [p, c, k, r, h] = await Promise.all([
         // ao editar, traz também pessoas inativas (podem estar na divisão)
         editarId
           ? supabase.from('pessoas').select('*')
           : supabase.from('pessoas').select('*').eq('ativa', true),
         supabase.from('cartoes').select('*').eq('ativo', true).order('nome'),
         supabase.from('categorias').select('*').order('nome'),
+        supabase.from('regras_categoria').select('*'),
+        supabase
+          .from('despesas')
+          .select('descricao, categoria_id')
+          .order('criado_em', { ascending: false })
+          .limit(500),
       ])
       if (p.error || c.error || k.error) {
         setErro('Não foi possível carregar os cadastros.')
@@ -75,6 +103,8 @@ export default function Lancar() {
       setPessoas(ordenadas)
       setCartoes(c.data)
       setCategorias(k.data)
+      setRegras(r.error ? [] : r.data) // sem o funcoes6.sql, as regras só ficam de fora
+      setHistorico(h.error ? [] : montarHistorico(h.data))
       const eu = ordenadas.find((x) => x.eh_eu)
       if (eu) setSelecionados({ [eu.id]: true })
       if (c.data.length === 1) setCartaoId(c.data[0].id)
@@ -90,7 +120,7 @@ export default function Lancar() {
           setTipo(d.tipo)
           setDescricao(d.descricao)
           setData(d.data)
-          setValor(centavosParaCampo(d.valor_total_centavos))
+          setValor(formatarMoedaDigitada(String(d.valor_total_centavos)))
           setCategoriaId(d.categoria_id ?? '')
           setCartaoId(d.cartao_id ?? '')
           setParcelas(String(d.total_parcelas))
@@ -113,7 +143,7 @@ export default function Lancar() {
           const preenchidos = {}
           d.despesa_participacoes.forEach((x) => {
             marcados[x.pessoa_id] = true
-            preenchidos[x.pessoa_id] = centavosParaCampo(x.valor_centavos)
+            preenchidos[x.pessoa_id] = formatarMoedaDigitada(String(x.valor_centavos))
           })
           setSelecionados(marcados)
           setValores(preenchidos)
@@ -148,6 +178,50 @@ export default function Lancar() {
   function alternarPessoa(id) {
     setSelecionados({ ...selecionados, [id]: !selecionados[id] })
   }
+
+  const nomeCategoria = (id) => categorias.find((cat) => cat.id === id)?.nome ?? ''
+  const historicoPorNorm = new Map(historico.map((h) => [h.norm, h]))
+
+  // enquanto você digita a descrição, sugere a categoria (mesma da última vez, ou pelas suas regras)
+  function mudarDescricao(texto) {
+    setDescricao(texto)
+    if (editarId || categoriaManual) return
+    const anterior = historicoPorNorm.get(normalizar(texto))
+    const regra = categoriaPorRegras(texto, regras)
+    if (anterior?.categoriaId) {
+      setCategoriaId(anterior.categoriaId)
+      setDicaCategoria('Mesma categoria da última vez')
+    } else if (regra) {
+      setCategoriaId(regra.categoria_id)
+      setDicaCategoria(`Sugerida pela regra “${regra.palavra}”`)
+    } else {
+      setCategoriaId('')
+      setDicaCategoria('')
+    }
+  }
+
+  function escolherSugestao(sugestao) {
+    setDescricao(sugestao.descricao)
+    if (!categoriaManual) {
+      setCategoriaId(sugestao.categoriaId ?? '')
+      setDicaCategoria(sugestao.categoriaId ? 'Mesma categoria da última vez' : '')
+    }
+  }
+
+  // descrições já usadas que combinam com o que está sendo digitado (as que começam igual vêm primeiro)
+  const textoNorm = normalizar(descricao)
+  const sugestoesDescricao =
+    editarId || textoNorm.length < 1
+      ? []
+      : historico
+          .filter((h) => h.norm.includes(textoNorm) && h.norm !== textoNorm)
+          .sort((a, b) => Number(b.norm.startsWith(textoNorm)) - Number(a.norm.startsWith(textoNorm)))
+          .slice(0, 5)
+          .map((h) => ({
+            descricao: h.descricao,
+            categoriaId: h.categoriaId,
+            rotulo: h.categoriaId ? nomeCategoria(h.categoriaId) : '',
+          }))
 
   async function lancar(evento) {
     evento.preventDefault()
@@ -227,6 +301,9 @@ export default function Lancar() {
     setVencimento('')
     setDiaVenc('')
     setEstimado(false)
+    setCategoriaId('')
+    setCategoriaManual(false)
+    setDicaCategoria('')
     setValores({})
     setPercentuais({})
     setModo('igual')
@@ -283,18 +360,18 @@ export default function Lancar() {
 
           <label className="campo">
             Descrição
-            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+            <CampoDescricao
+              valor={descricao}
+              aoMudar={mudarDescricao}
+              sugestoes={sugestoesDescricao}
+              aoEscolher={escolherSugestao}
+            />
           </label>
 
           <div className="duas-colunas">
             <label className="campo">
               Valor total (R$)
-              <input
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                inputMode="decimal"
-                placeholder="0,00"
-              />
+              <CampoMoeda valor={valor} aoMudar={setValor} />
             </label>
             <label className="campo">
               Data
@@ -304,7 +381,17 @@ export default function Lancar() {
 
           <label className="campo">
             Categoria (opcional)
-            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+            {dicaCategoria && categoriaId && !categoriaManual && (
+              <span className="dica-categoria">{dicaCategoria}</span>
+            )}
+            <select
+              value={categoriaId}
+              onChange={(e) => {
+                setCategoriaId(e.target.value)
+                setCategoriaManual(true)
+                setDicaCategoria('')
+              }}
+            >
               <option value="">Sem categoria</option>
               {categorias.map((c) => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
@@ -435,13 +522,11 @@ export default function Lancar() {
                   </label>
 
                   {marcada && modo === 'valor' && (
-                    <input
+                    <CampoMoeda
                       className="mini"
-                      inputMode="decimal"
-                      placeholder="0,00"
                       aria-label={`Valor de ${p.nome}`}
-                      value={valores[p.id] ?? ''}
-                      onChange={(e) => setValores({ ...valores, [p.id]: e.target.value })}
+                      valor={valores[p.id] ?? ''}
+                      aoMudar={(v) => setValores({ ...valores, [p.id]: v })}
                     />
                   )}
 
@@ -476,14 +561,15 @@ export default function Lancar() {
           {divisao.ok && modo !== 'igual' && <p className="confere">A divisão confere com o total.</p>}
         </div>
 
-        <button
-          className="botao-primario"
-          type="submit"
-          disabled={salvando || pessoas.length === 0}
-          style={{ width: '100%' }}
-        >
-          {salvando ? 'Salvando…' : editarId ? 'Salvar alterações' : 'Lançar despesa'}
-        </button>
+        <div className="barra-salvar">
+          <div className="barra-salvar-resumo">
+            <span className="detalhe">Total</span>
+            <b>{totalCentavos > 0 ? centavosParaReais(totalCentavos) : 'R$ 0,00'}</b>
+          </div>
+          <button className="botao-primario" type="submit" disabled={salvando || pessoas.length === 0}>
+            {salvando ? 'Salvando…' : editarId ? 'Salvar alterações' : 'Lançar despesa'}
+          </button>
+        </div>
       </form>
     </section>
   )

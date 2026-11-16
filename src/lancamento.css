@@ -1,0 +1,60 @@
+/* ---------- Sugestões de descrição ---------- */
+.descricao-campo { position: relative; }
+.descricao-campo input { width: 100%; }
+
+.descricao-sugestoes {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.descricao-sugestoes li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.descricao-sugestoes li:hover,
+.descricao-sugestoes li.ativa { background: var(--primary-soft); color: var(--on-primary-soft); }
+.descricao-sugestoes li .detalhe { flex-shrink: 0; }
+
+/* ---------- Dica da categoria sugerida ---------- */
+.dica-categoria { font-size: 12px; font-weight: 400; color: var(--primary); }
+
+/* ---------- Barra de salvar: sempre visível ---------- */
+.barra-salvar {
+  position: sticky;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.barra-salvar-resumo { display: flex; flex-direction: column; line-height: 1.2; }
+.barra-salvar-resumo b { font-size: 1.1rem; font-weight: 500; }
+.barra-salvar .botao-primario { flex: 1; max-width: 260px; }
+
+@media (min-width: 768px) {
+  .barra-salvar { bottom: 16px; }
+}
