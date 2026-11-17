@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, ChevronRight, Plus } from 'lucide-react'
@@ -100,7 +101,7 @@ export default function Resumo() {
     carregar()
   }, [carregar])
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   const meuFixos = dados ? somar(dados.fixos, 'meu') : 0
   const meuCartoes = dados ? somar(dados.cartoes, 'meu') : 0

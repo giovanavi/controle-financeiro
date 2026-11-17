@@ -4,13 +4,16 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { DialogoProvider } from './components/Dialogo'
+import { ToastProvider } from './components/Toasts'
 import './ux.css' // por último, para prevalecer sobre os outros estilos
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <DialogoProvider>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </DialogoProvider>
     </BrowserRouter>
   </StrictMode>

@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarClock, Tag, Target, Trash2, Undo2 } from 'lucide-react'
@@ -103,7 +104,7 @@ export default function Orcamento() {
     await atualizar()
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   const linhas = dados?.linhas ?? []
   const comLimite = linhas.filter((l) => l.limite > 0).sort((a, b) => b.estado.pct - a.estado.pct)

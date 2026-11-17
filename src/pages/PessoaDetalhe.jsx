@@ -1,8 +1,10 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
+import { useToast } from '../components/Toasts'
 import SeletorMes from '../components/SeletorMes'
 import EstadoVazio from '../components/EstadoVazio'
 import BotaoExportar from '../components/BotaoExportar'
@@ -33,6 +35,7 @@ function origem(item) {
 export default function PessoaDetalhe() {
   const { id } = useParams()
   const { confirmar, perguntar } = useDialogo()
+  const { avisar } = useToast()
   const [mes, setMes] = useState(mesAtual())
   const [escopo, setEscopo] = useState('mes') // 'mes' ou 'pendencias' (todos os meses)
   const [filtro, setFiltro] = useState('todos')
@@ -93,8 +96,19 @@ export default function PessoaDetalhe() {
 
   async function alternarPago(item) {
     setErro('')
-    const { error } = await definirPago(item.id, !item.pago)
-    if (error) setErro('Não foi possível atualizar o pagamento.')
+    const estadoAnterior = item.pago
+    const { error } = await definirPago(item.id, !estadoAnterior)
+    if (error) {
+      setErro('Não foi possível atualizar o pagamento.')
+    } else {
+      avisar(estadoAnterior ? 'Pagamento desmarcado.' : 'Marcado como pago.', {
+        desfazer: async () => {
+          const { error: erroDesfazer } = await definirPago(item.id, estadoAnterior)
+          if (erroDesfazer) throw erroDesfazer
+          await carregar()
+        },
+      })
+    }
     await carregar()
   }
 
@@ -146,7 +160,7 @@ export default function PessoaDetalhe() {
     }
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
   if (!pessoa) {
     return (
       <section>

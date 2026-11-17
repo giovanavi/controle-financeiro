@@ -1,0 +1,104 @@
+/* ---------- Avisos rápidos (toasts) ---------- */
+.toasts {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  font-size: 14px;
+  pointer-events: auto;
+  animation: toast-entrar 0.2s ease-out;
+}
+.toast svg { flex-shrink: 0; }
+.toast-ok svg { color: var(--primary); }
+.toast-erro { border-color: var(--danger-text); }
+.toast-erro svg { color: var(--danger-text); }
+.toast-info svg { color: var(--text-2); }
+.toast-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.toast-desfazer {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.toast-desfazer:hover { filter: brightness(0.96); }
+
+.toast-fechar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  color: var(--text-2);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.toast-fechar:hover { background: var(--bg); }
+
+@keyframes toast-entrar {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (min-width: 768px) {
+  .toasts { top: 24px; left: auto; right: 24px; align-items: flex-end; }
+}
+
+/* ---------- Esqueleto de carregamento ---------- */
+.esqueleto { display: flex; flex-direction: column; }
+.esq-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.esq-item:first-child { border-top: none; }
+.esq-barra {
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: esq-brilho 1.3s ease-in-out infinite;
+}
+.esq-barra.curta { width: 35%; height: 11px; }
+@keyframes esq-brilho {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .esq-barra { animation: none; }
+}

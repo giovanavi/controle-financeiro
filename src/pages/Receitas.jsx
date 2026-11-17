@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Pencil, Plus, Trash2, TrendingUp } from 'lucide-react'
@@ -7,6 +8,7 @@ import EstadoVazio from '../components/EstadoVazio'
 import MenuAcoes from '../components/MenuAcoes'
 import CampoData from '../components/CampoData'
 import { useDialogo } from '../components/Dialogo'
+import { useToast } from '../components/Toasts'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
 import { formatarData, hojeISO, mesAtual, mesDeISO, mesParaISO, rotuloMes } from '../utils/meses'
 import { diasAte, plural } from '../utils/vencimentos'
@@ -26,6 +28,7 @@ function estadoReceita(r) {
 
 export default function Receitas() {
   const { confirmar, escolher } = useDialogo()
+  const { avisar } = useToast()
   const [params] = useSearchParams()
   const mesDoLink = params.get('mes')
   const [mes, setMes] = useState(
@@ -152,7 +155,20 @@ export default function Receitas() {
       .from('receitas')
       .update({ recebida, recebida_em: recebida ? hojeISO() : null })
       .eq('id', r.id)
-    if (error) setErro('Não foi possível atualizar a receita.')
+    if (error) {
+      setErro('Não foi possível atualizar a receita.')
+    } else {
+      avisar(recebida ? 'Receita marcada como recebida.' : 'Recebimento desmarcado.', {
+        desfazer: async () => {
+          const { error: erroDesfazer } = await supabase
+            .from('receitas')
+            .update({ recebida: r.recebida, recebida_em: r.recebida_em })
+            .eq('id', r.id)
+          if (erroDesfazer) throw erroDesfazer
+          await carregar()
+        },
+      })
+    }
     await carregar()
   }
 
@@ -289,7 +305,7 @@ export default function Receitas() {
       </div>
 
       {carregando ? (
-        <p className="suave">Carregando…</p>
+        <Esqueleto />
       ) : itens.length === 0 ? (
         <EstadoVazio
           Icone={TrendingUp}

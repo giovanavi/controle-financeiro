@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarClock, Clock, CreditCard, Repeat, Sparkles, TriangleAlert, CircleCheck, Calendar } from 'lucide-react'
@@ -39,7 +40,7 @@ export default function ContasAPagar() {
     if (!ok) setAviso('Não foi possível atualizar o pagamento. Tente de novo.')
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   const visiveis = itens.filter(
     (i) => filtro === 'todas' || (filtro === 'apagar' && !i.paga) || (filtro === 'pagas' && i.paga)

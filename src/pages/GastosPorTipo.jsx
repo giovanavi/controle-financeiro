@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarClock, CircleCheck, Pencil, Repeat, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
@@ -5,6 +6,7 @@ import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
 import EstadoVazio from '../components/EstadoVazio'
 import { useDialogo } from '../components/Dialogo'
+import { useToast } from '../components/Toasts'
 import { estadoConta } from '../utils/vencimentos'
 import SeletorMes from '../components/SeletorMes'
 import { centavosParaCampo, centavosParaReais, reaisParaCentavos } from '../utils/dinheiro'
@@ -17,6 +19,7 @@ const soma = (lista, f) => lista.reduce((total, item) => total + f(item), 0)
 // Usada para "Gastos fixos" (tipo="fixo") e "Extras" (tipo="extra")
 export default function GastosPorTipo({ tipo, titulo }) {
   const { confirmar, perguntar } = useDialogo()
+  const { avisar } = useToast()
   const [params] = useSearchParams()
   const mesDoLink = params.get('mes') // ex.: /fixos?mes=2026-11-01 (vindo de Contas a pagar)
   const [mes, setMes] = useState(
@@ -50,8 +53,19 @@ export default function GastosPorTipo({ tipo, titulo }) {
 
   async function alternarPago(parte) {
     setErro('')
-    const { error } = await definirPago(parte.id, !parte.pago)
-    if (error) setErro('Não foi possível atualizar o pagamento.')
+    const estadoAnterior = parte.pago
+    const { error } = await definirPago(parte.id, !estadoAnterior)
+    if (error) {
+      setErro('Não foi possível atualizar o pagamento.')
+    } else {
+      avisar(estadoAnterior ? 'Pagamento desmarcado.' : 'Marcado como pago.', {
+        desfazer: async () => {
+          const { error: erroDesfazer } = await definirPago(parte.id, estadoAnterior)
+          if (erroDesfazer) throw erroDesfazer
+          await carregar()
+        },
+      })
+    }
     await carregar()
   }
 
@@ -164,7 +178,7 @@ export default function GastosPorTipo({ tipo, titulo }) {
     await carregar()
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   const meuTotal = soma(itens, (i) =>
     soma(i.lancamento_participacoes.filter((p) => p.pessoas?.eh_eu), (p) => p.valor_centavos)

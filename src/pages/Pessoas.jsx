@@ -1,16 +1,14 @@
+import Esqueleto from '../components/Esqueleto'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Pencil, Power, Users } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import MenuAcoes from '../components/MenuAcoes'
 import EstadoVazio from '../components/EstadoVazio'
-import { centavosParaReais } from '../utils/dinheiro'
-import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
 
 export default function Pessoas() {
   const [pessoas, setPessoas] = useState([])
   const [carregando, setCarregando] = useState(true)
-  const [pendencias, setPendencias] = useState({}) // { idDaPessoa: { total, mes } }
   const [erro, setErro] = useState('')
   const [form, setForm] = useState(null) // null = formulário fechado
   const [salvando, setSalvando] = useState(false)
@@ -19,23 +17,6 @@ export default function Pessoas() {
     const { data, error } = await supabase.from('pessoas').select('*').order('nome')
     if (error) setErro('Não foi possível carregar as pessoas.')
     else setPessoas(data)
-
-    // quanto cada pessoa ainda deve (não pago): no total e no mês atual
-    const euId = (data ?? []).find((p) => p.eh_eu)?.id
-    const { data: pendentes } = await supabase
-      .from('lancamento_participacoes')
-      .select('pessoa_id, valor_centavos, lancamentos!inner(mes_referencia)')
-      .eq('pago', false)
-    const mesISO = mesParaISO(mesAtual())
-    const mapa = {}
-    ;(pendentes ?? []).forEach((x) => {
-      if (x.pessoa_id === euId) return
-      const r = mapa[x.pessoa_id] ?? { total: 0, mes: 0 }
-      r.total += x.valor_centavos
-      if (x.lancamentos.mes_referencia === mesISO) r.mes += x.valor_centavos
-      mapa[x.pessoa_id] = r
-    })
-    setPendencias(mapa)
     setCarregando(false)
   }
 
@@ -44,8 +25,6 @@ export default function Pessoas() {
   }, [])
 
   const temEu = pessoas.some((p) => p.eh_eu)
-  const totalReceber = Object.values(pendencias).reduce((a, r) => a + r.total, 0)
-  const mesReceber = Object.values(pendencias).reduce((a, r) => a + r.mes, 0)
 
   async function criarEu() {
     setErro('')
@@ -105,19 +84,6 @@ export default function Pessoas() {
 
       {erro && <p className="erro" role="alert">{erro}</p>}
 
-      {!carregando && totalReceber > 0 && (
-        <div className="metricas">
-          <div className="metrica">
-            <div className="rotulo">Falta receber, no total</div>
-            <div className="numero">{centavosParaReais(totalReceber)}</div>
-          </div>
-          <div className="metrica">
-            <div className="rotulo">Falta receber em {rotuloMes(mesAtual())}</div>
-            <div className="numero">{centavosParaReais(mesReceber)}</div>
-          </div>
-        </div>
-      )}
-
       {!carregando && !temEu && (
         <div className="bloco">
           <p>
@@ -161,7 +127,7 @@ export default function Pessoas() {
 
       <div className="bloco">
         {carregando ? (
-          <p className="suave">Carregando…</p>
+          <Esqueleto />
         ) : pessoas.length === 0 ? (
           <EstadoVazio
             simples
@@ -181,13 +147,6 @@ export default function Pessoas() {
                       {!p.ativa && <span className="chip inativo">Inativa</span>}
                     </div>
                     {p.observacao && <div className="detalhe">{p.observacao}</div>}
-                    {!p.eh_eu && (
-                      <div className="detalhe">
-                        {(pendencias[p.id]?.total ?? 0) > 0
-                          ? `Deve ${centavosParaReais(pendencias[p.id].total)} no total · ${centavosParaReais(pendencias[p.id].mes)} neste mês`
-                          : 'Sem pendências'}
-                      </div>
-                    )}
                   </div>
                   <ChevronRight size={18} aria-hidden="true" />
                 </Link>

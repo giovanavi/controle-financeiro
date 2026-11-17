@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, CreditCard, Pencil, Power } from 'lucide-react'
@@ -139,7 +140,7 @@ export default function Cartoes() {
 
       <div className="bloco">
         {carregando ? (
-          <p className="suave">Carregando…</p>
+          <Esqueleto />
         ) : cartoes.length === 0 ? (
           <EstadoVazio
             simples

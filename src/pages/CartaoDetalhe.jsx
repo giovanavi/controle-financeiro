@@ -1,8 +1,10 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronRight, Pencil, Receipt, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
+import { useToast } from '../components/Toasts'
 import SeletorMes from '../components/SeletorMes'
 import MenuAcoes from '../components/MenuAcoes'
 import EstadoVazio from '../components/EstadoVazio'
@@ -30,6 +32,7 @@ const rotuloParcela = (n, total) =>
 export default function CartaoDetalhe() {
   const { id } = useParams()
   const { confirmar, perguntar } = useDialogo()
+  const { avisar } = useToast()
   const [params] = useSearchParams()
   const mesDoLink = params.get('mes')
   const [mes, setMes] = useState(
@@ -101,8 +104,19 @@ export default function CartaoDetalhe() {
 
   async function alternarPago(parte) {
     setErro('')
-    const { error } = await definirPago(parte.id, !parte.pago)
-    if (error) setErro('Não foi possível atualizar o pagamento.')
+    const estadoAnterior = parte.pago
+    const { error } = await definirPago(parte.id, !estadoAnterior)
+    if (error) {
+      setErro('Não foi possível atualizar o pagamento.')
+    } else {
+      avisar(estadoAnterior ? 'Pagamento desmarcado.' : 'Marcado como pago.', {
+        desfazer: async () => {
+          const { error: erroDesfazer } = await definirPago(parte.id, estadoAnterior)
+          if (erroDesfazer) throw erroDesfazer
+          await carregar()
+        },
+      })
+    }
     await carregar()
   }
 
@@ -238,7 +252,7 @@ export default function CartaoDetalhe() {
     }
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
   if (!cartao) {
     return (
       <section>

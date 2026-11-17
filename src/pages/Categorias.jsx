@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Pencil, Trash2 } from 'lucide-react'
@@ -118,7 +119,7 @@ export default function Categorias() {
 
       <div className="bloco">
         {carregando ? (
-          <p className="suave">Carregando…</p>
+          <Esqueleto />
         ) : categorias.length === 0 ? (
           <p className="suave">Nenhuma categoria ainda.</p>
         ) : (

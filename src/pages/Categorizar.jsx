@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ListChecks, Tag, Trash2 } from 'lucide-react'
@@ -5,6 +6,7 @@ import { supabase } from '../supabaseClient'
 import { useDialogo } from '../components/Dialogo'
 import EstadoVazio from '../components/EstadoVazio'
 import MenuAcoes from '../components/MenuAcoes'
+import { useToast } from '../components/Toasts'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesDeISO, rotuloMes } from '../utils/meses'
 import { normalizar } from '../utils/importacao'
@@ -20,6 +22,7 @@ const TAMANHO_PAGINA = 50
 
 export default function Categorizar() {
   const { confirmar } = useDialogo()
+  const { avisar } = useToast()
   const [aba, setAba] = useState('compras')
   const [despesas, setDespesas] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -138,16 +141,38 @@ export default function Categorizar() {
     setOcupado(false)
   }
 
+  // guarda de onde cada compra veio para o "Desfazer": [[categoriaAnteriorOuNull, [ids]], ...]
+  function agruparPorCategoria(lista) {
+    const mapa = new Map()
+    lista.forEach((i) => {
+      const chave = i.categoriaId ?? null
+      mapa.set(chave, [...(mapa.get(chave) ?? []), i.id])
+    })
+    return [...mapa]
+  }
+
+  async function desfazerCategorias(anteriores) {
+    for (const [categoriaId, ids] of anteriores) {
+      const ok = await atualizarCategoria(supabase, ids, categoriaId)
+      if (!ok) throw new Error('falha ao desfazer')
+    }
+    await carregar()
+  }
+
+  const textoCompras = (n) => `${n} ${n === 1 ? 'compra categorizada' : 'compras categorizadas'}`
+
   function aplicarSelecionadas() {
     if (marcadas.length === 0) return setErro('Marque ao menos uma compra.')
     if (!catEscolhida) return setErro('Escolha uma categoria.')
     executar(async () => {
-      const descricoes = itens.filter((i) => sel[i.id]).map((i) => i.descricao)
+      const selecionadas = itens.filter((i) => sel[i.id])
+      const descricoes = selecionadas.map((i) => i.descricao)
+      const anteriores = agruparPorCategoria(selecionadas)
       const ok = await atualizarCategoria(supabase, marcadas, catEscolhida)
       if (!ok) return setErro('Não foi possível categorizar. Tente de novo.')
-      setMensagem(
-        `${marcadas.length} ${marcadas.length === 1 ? 'compra categorizada' : 'compras categorizadas'} como ${nomeDaCategoria.get(catEscolhida)}.`
-      )
+      avisar(`${textoCompras(marcadas.length)} como ${nomeDaCategoria.get(catEscolhida)}.`, {
+        desfazer: () => desfazerCategorias(anteriores),
+      })
       setNovasRegras(
         palavrasComuns(descricoes, regras).map((palavra) => ({ palavra, categoriaId: catEscolhida }))
       )
@@ -160,9 +185,10 @@ export default function Categorizar() {
     executar(async () => {
       const ok = await atualizarCategoria(supabase, sugestao.ids, sugestao.regra.categoria_id)
       if (!ok) return setErro('Não foi possível aplicar a regra.')
-      setMensagem(
-        `${sugestao.ids.length} ${sugestao.ids.length === 1 ? 'compra categorizada' : 'compras categorizadas'} como ${nomeDaCategoria.get(sugestao.regra.categoria_id)}.`
-      )
+      avisar(`${textoCompras(sugestao.ids.length)} como ${nomeDaCategoria.get(sugestao.regra.categoria_id)}.`, {
+        // estas compras estavam sem categoria
+        desfazer: () => desfazerCategorias([[null, sugestao.ids]]),
+      })
       await carregar()
     })
   }
@@ -176,12 +202,16 @@ export default function Categorizar() {
         porCategoria.set(s.regra.categoria_id, lista)
       })
       let total = 0
+      const todos = new Set()
       for (const [categoriaId, ids] of porCategoria) {
         const ok = await atualizarCategoria(supabase, [...ids], categoriaId)
         if (!ok) return setErro('Não foi possível aplicar todas as regras.')
         total += ids.size
+        ids.forEach((id) => todos.add(id))
       }
-      setMensagem(`${total} ${total === 1 ? 'compra categorizada' : 'compras categorizadas'} pelas regras.`)
+      avisar(`${textoCompras(total)} pelas regras.`, {
+        desfazer: () => desfazerCategorias([[null, [...todos]]]),
+      })
       await carregar()
     })
   }
@@ -204,14 +234,14 @@ export default function Categorizar() {
     evento.preventDefault()
     if (await criarRegra(novaPalavra, novaCategoria)) {
       setNovaPalavra('')
-      setMensagem('Regra criada. Ela já aparece como sugestão na aba Compras.')
+      avisar('Regra criada. Ela já aparece como sugestão na aba Compras.')
     }
   }
 
   async function sugerirRegra(sugestao) {
     if (await criarRegra(sugestao.palavra, sugestao.categoriaId)) {
       setNovasRegras(novasRegras.filter((n) => n.palavra !== sugestao.palavra))
-      setMensagem(`Regra criada: “${sugestao.palavra}” vira ${nomeDaCategoria.get(sugestao.categoriaId)}.`)
+      avisar(`Regra criada: “${sugestao.palavra}” vira ${nomeDaCategoria.get(sugestao.categoriaId)}.`)
     }
   }
 
@@ -233,7 +263,7 @@ export default function Categorizar() {
     await carregar()
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   if (categorias.length === 0) {
     return (
@@ -273,18 +303,16 @@ export default function Categorizar() {
         </p>
       )}
 
-      {mensagem && (
+      {novasRegras.length > 0 && (
         <div className="mensagem-ok" role="status">
-          {mensagem}
-          {novasRegras.length > 0 && (
-            <div className="acoes">
+          Quer lembrar isso como regra?
+          <div className="acoes">
               {novasRegras.map((n) => (
                 <button key={n.palavra} className="botao-secundario compacto" onClick={() => sugerirRegra(n)}>
                   Criar regra “{n.palavra}” → {nomeDaCategoria.get(n.categoriaId)}
                 </button>
               ))}
             </div>
-          )}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import Esqueleto from '../components/Esqueleto'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Activity } from 'lucide-react'
@@ -120,7 +121,7 @@ export default function Analises() {
       {erro && <p className="erro" role="alert">{erro}</p>}
 
       {carregando && !dados ? (
-        <p className="suave">Carregando…</p>
+        <Esqueleto />
       ) : !temDados ? (
         <EstadoVazio
           Icone={Activity}
@@ -230,7 +231,7 @@ export default function Analises() {
         {erroParcelas ? (
           <p className="erro">Não foi possível carregar as parcelas futuras.</p>
         ) : !parcelas ? (
-          <p className="suave" style={{ margin: 0 }}>Carregando…</p>
+          <Esqueleto linhas={2} />
         ) : totalParcelas === 0 ? (
           <p className="suave" style={{ margin: 0 }}>Nenhuma parcela de cartão nos próximos meses.</p>
         ) : (

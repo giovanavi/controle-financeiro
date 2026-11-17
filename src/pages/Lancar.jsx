@@ -1,7 +1,9 @@
+import Esqueleto from '../components/Esqueleto'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import CampoData from '../components/CampoData'
+import { useToast } from '../components/Toasts'
 import CampoDescricao from '../components/CampoDescricao'
 import CampoMoeda, { formatarMoedaDigitada } from '../components/CampoMoeda'
 import { normalizar } from '../utils/importacao'
@@ -43,6 +45,7 @@ export default function Lancar() {
   const [params] = useSearchParams() // /lancar?tipo=fixo ou ?tipo=extra ou ?editar=<id da despesa>
   const editarId = params.get('editar')
   const navigate = useNavigate()
+  const { avisar } = useToast()
   const tipoInicial = ['fixo', 'extra'].includes(params.get('tipo')) ? params.get('tipo') : 'cartao'
   const [pessoas, setPessoas] = useState([])
   const [cartoes, setCartoes] = useState([])
@@ -288,10 +291,18 @@ export default function Lancar() {
     }
 
     if (editarId) {
+      avisar('Despesa atualizada.')
       navigate(tipo === 'cartao' ? `/cartoes/${cartaoId}` : tipo === 'fixo' ? '/fixos' : '/extras')
       return
     }
-    setSucesso(`Despesa "${descricao.trim()}" lançada.${avisoVencimento}`)
+    const nomeLancado = descricao.trim()
+    avisar(`Despesa “${nomeLancado}” lançada.${avisoVencimento}`, {
+      // desfazer apaga a despesa criada, com as parcelas e a divisão
+      desfazer: async () => {
+        const { error: erroDesfazer } = await supabase.from('despesas').delete().eq('id', novoId)
+        if (erroDesfazer) throw erroDesfazer
+      },
+    })
     setDescricao('')
     setValor('')
     setParcelas('1')
@@ -312,7 +323,7 @@ export default function Lancar() {
     window.scrollTo(0, 0)
   }
 
-  if (carregando) return <p className="suave">Carregando…</p>
+  if (carregando) return <Esqueleto />
 
   return (
     <section>
