@@ -1,0 +1,30 @@
+/* ---------- Seções do Resumo que se recolhem ---------- */
+.secao-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.secao-cabecalho b { font-weight: 500; }
+.secao-cabecalho:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: 8px; }
+.secao-valor { margin-left: auto; font-weight: 500; text-align: right; }
+.secao-cabecalho .seta { flex-shrink: 0; color: var(--text-2); transition: transform 0.15s; }
+.secao-cabecalho .seta.girada { transform: rotate(180deg); }
+
+.secao-corpo { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.secao-corpo .link-acao { margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .secao-cabecalho .seta { transition: none; }
+}
+
+/* ---------- Atalhos no fim do Resumo ---------- */
+.atalhos { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 16px; }

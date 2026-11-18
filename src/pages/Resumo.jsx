@@ -1,18 +1,20 @@
 import Esqueleto from '../components/Esqueleto'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import SeletorMes from '../components/SeletorMes'
 import BannerContas from '../components/BannerContas'
 import CartaoSaldo from '../components/CartaoSaldo'
 import CartaoOrcamento from '../components/CartaoOrcamento'
-import { carregarOrcamentoMes } from '../utils/orcamento'
 import EstadoVazio from '../components/EstadoVazio'
+import { carregarOrcamentoMes } from '../utils/orcamento'
 import { centavosParaReais } from '../utils/dinheiro'
 import { mesAtual, mesParaISO, rotuloMes } from '../utils/meses'
+import { lerPreferencia, salvarPreferencia } from '../utils/preferencias'
 import '../faturas.css'
 import '../resumo.css'
+import '../resumo2.css'
 
 function acumular(mapa, chave, rotulo, valor, minha, id = null) {
   const atual = mapa.get(chave) ?? { rotulo, id, total: 0, meu: 0 }
@@ -24,11 +26,47 @@ function acumular(mapa, chave, rotulo, valor, minha, id = null) {
 const lista = (mapa) => [...mapa.values()].sort((a, b) => a.rotulo.localeCompare(b.rotulo))
 const somar = (itens, campo) => itens.reduce((total, item) => total + item[campo], 0)
 
+// Seção que se recolhe: o cabeçalho mostra o total mesmo fechada
+function Secao({ id, titulo, resumo, aberta, aoAlternar, children }) {
+  return (
+    <div className="bloco secao-resumo">
+      <button
+        type="button"
+        className="secao-cabecalho"
+        aria-expanded={aberta}
+        onClick={() => aoAlternar(id)}
+      >
+        <b>{titulo}</b>
+        <span className="secao-valor">{resumo}</span>
+        <ChevronDown size={18} className={aberta ? 'seta girada' : 'seta'} aria-hidden="true" />
+      </button>
+      {aberta && <div className="secao-corpo">{children}</div>}
+    </div>
+  )
+}
+
 export default function Resumo() {
   const [mes, setMes] = useState(mesAtual())
   const [dados, setDados] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
+
+  // preferências lembradas neste aparelho
+  const [modo, setModo] = useState(() => lerPreferencia('resumo.modo', 'essencial'))
+  const [abertas, setAbertas] = useState(() =>
+    lerPreferencia('resumo.secoes', { numeros: true, fixos: true, cartoes: true, extras: true })
+  )
+
+  function mudarModo(novo) {
+    setModo(novo)
+    salvarPreferencia('resumo.modo', novo)
+  }
+
+  function alternarSecao(id) {
+    const novas = { ...abertas, [id]: !abertas[id] }
+    setAbertas(novas)
+    salvarPreferencia('resumo.secoes', novas)
+  }
 
   const carregar = useCallback(async () => {
     const mesISO = mesParaISO(mes)
@@ -103,6 +141,7 @@ export default function Resumo() {
 
   if (carregando) return <Esqueleto />
 
+  const mesISO = mesParaISO(mes)
   const meuFixos = dados ? somar(dados.fixos, 'meu') : 0
   const meuCartoes = dados ? somar(dados.cartoes, 'meu') : 0
   const meuExtras = dados ? somar(dados.extras, 'meu') : 0
@@ -118,12 +157,17 @@ export default function Resumo() {
     <section>
       <div className="cabecalho-pagina">
         <h1>Resumo</h1>
-        <div className="acoes">
-          <Link className="botao-secundario compacto" to="/receitas">Receitas</Link>
-          <Link className="botao-secundario compacto" to="/analises">Análises</Link>
+        <div className="segmentos pequeno" role="group" aria-label="Nível de detalhe">
+          <button className={modo === 'essencial' ? 'ativo' : ''} onClick={() => mudarModo('essencial')}>
+            Essencial
+          </button>
+          <button className={modo === 'completo' ? 'ativo' : ''} onClick={() => mudarModo('completo')}>
+            Completo
+          </button>
         </div>
       </div>
 
+      {/* 1. avisos de contas */}
       <BannerContas para="/contas" />
 
       <SeletorMes mes={mes} aoMudar={setMes} />
@@ -132,6 +176,7 @@ export default function Resumo() {
 
       {dados && (
         <>
+          {/* 2. o número principal e o saldo */}
           <div className="hero">
             <div className="rotulo">Gasto real do mês</div>
             <div className="grande">{centavosParaReais(gastoReal)}</div>
@@ -139,7 +184,7 @@ export default function Resumo() {
           </div>
 
           <CartaoSaldo
-            mesISO={mesParaISO(mes)}
+            mesISO={mesISO}
             receitaPrevista={dados.receitaPrevista}
             receitaRecebida={dados.receitaRecebida}
             receitasDisponiveis={dados.receitasDisponiveis}
@@ -150,9 +195,10 @@ export default function Resumo() {
             reembolsoPendente={dados.pendenteTerceiros}
           />
 
-          <CartaoOrcamento orcamento={dados.orcamento} mesISO={mesParaISO(mes)} />
+          {/* 3. orçamento */}
+          <CartaoOrcamento orcamento={dados.orcamento} mesISO={mesISO} />
 
-          {vazio && (
+          {vazio ? (
             <>
               <EstadoVazio
                 Icone={CalendarDays}
@@ -176,121 +222,167 @@ export default function Resumo() {
                 </p>
               )}
             </>
-          )}
-
-          {!vazio && (
-            <>
-
-          <div className="metricas">
-            <div className="metrica">
-              <div className="rotulo">Gastos fixos</div>
-              <div className="numero">{centavosParaReais(meuFixos)}</div>
-            </div>
-            <div className="metrica">
-              <div className="rotulo">Minha parte nas faturas</div>
-              <div className="numero">{centavosParaReais(meuCartoes)}</div>
-            </div>
-            <div className="metrica">
-              <div className="rotulo">Extras</div>
-              <div className="numero">{centavosParaReais(meuExtras)}</div>
-            </div>
-          </div>
-
-          <div className="metricas">
-            <div className="metrica">
-              <div className="rotulo">Vou pagar de cartão</div>
-              <div className="numero">{centavosParaReais(totalCartoes + dados.encargos)}</div>
-            </div>
-            <div className="metrica">
-              <div className="rotulo">Terceiros ainda me devem</div>
-              <div className="numero">{centavosParaReais(dados.pendenteTerceiros)}</div>
-            </div>
-            <div className="metrica">
-              <div className="rotulo">Encargos (juros e taxas)</div>
-              <div className="numero">{centavosParaReais(dados.encargos)}</div>
-            </div>
-            <div className="metrica">
-              <div className="rotulo">Parcelado nos meses seguintes</div>
-              <div className="numero">{centavosParaReais(dados.parcelado)}</div>
-            </div>
-          </div>
-
-          <div className="bloco secao-resumo">
-            <div className="cabecalho-secao">
-              <b>Gastos fixos</b>
-              <Link className="link-acao" to="/fixos">Ver todos <ChevronRight size={16} aria-hidden="true" /></Link>
-            </div>
-            {dados.fixos.length === 0 ? (
-              <p className="suave" style={{ margin: 0 }}>Nenhum gasto fixo neste mês.</p>
-            ) : (
+          ) : modo === 'essencial' ? (
+            /* 4a. modo essencial: uma lista curta, cada linha leva à tela de detalhe */
+            <div className="bloco">
+              <div className="cabecalho-secao">
+                <b>Para onde foi o dinheiro</b>
+              </div>
               <ul className="lista">
-                {dados.fixos.map((i) => (
-                  <li key={i.id} className="linha">
-                    <span>{i.rotulo}</span>
-                    <span>{centavosParaReais(i.meu)}</span>
-                  </li>
-                ))}
-                <li className="linha total-linha">
-                  <span>Total</span>
-                  <span>{centavosParaReais(meuFixos)}</span>
+                <li className="linha">
+                  <Link className="item-link" to={`/fixos?mes=${mesISO}`}>
+                    <div className="item-texto"><div className="titulo">Gastos fixos</div></div>
+                    <span>{centavosParaReais(meuFixos)}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
                 </li>
-              </ul>
-            )}
-          </div>
-
-          <div className="bloco secao-resumo">
-            <div className="cabecalho-secao">
-              <b>Faturas dos cartões</b>
-              <Link className="link-acao" to="/cartoes">Ver cartões <ChevronRight size={16} aria-hidden="true" /></Link>
-            </div>
-            {dados.cartoes.length === 0 ? (
-              <p className="suave" style={{ margin: 0 }}>Nenhuma fatura neste mês.</p>
-            ) : (
-              <ul className="lista">
-                {dados.cartoes.map((c) => (
-                  <li key={c.id} className="linha">
-                    <Link className="item-link" to={`/cartoes/${c.id}?mes=${mesParaISO(mes)}`}>
+                <li className="linha">
+                  <Link className="item-link" to="/cartoes">
+                    <div className="item-texto">
+                      <div className="titulo">Faturas dos cartões</div>
+                      <div className="detalhe">minha parte</div>
+                    </div>
+                    <span>{centavosParaReais(meuCartoes)}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
+                </li>
+                <li className="linha">
+                  <Link className="item-link" to={`/extras?mes=${mesISO}`}>
+                    <div className="item-texto"><div className="titulo">Extras</div></div>
+                    <span>{centavosParaReais(meuExtras)}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
+                </li>
+                {dados.pendenteTerceiros > 0 && (
+                  <li className="linha">
+                    <Link className="item-link" to="/pessoas">
                       <div className="item-texto">
-                        <div className="titulo">{c.rotulo}</div>
-                        <div className="detalhe">Fatura {centavosParaReais(c.total)}</div>
+                        <div className="titulo">Terceiros ainda me devem</div>
+                        <div className="detalhe">neste mês</div>
                       </div>
-                      <span>{centavosParaReais(c.meu)}</span>
+                      <span>{centavosParaReais(dados.pendenteTerceiros)}</span>
                       <ChevronRight size={18} aria-hidden="true" />
                     </Link>
                   </li>
-                ))}
-                <li className="linha total-linha">
-                  <span>Minha parte</span>
-                  <span>{centavosParaReais(meuCartoes)}</span>
-                </li>
+                )}
               </ul>
-            )}
-          </div>
-
-          <div className="bloco secao-resumo">
-            <div className="cabecalho-secao">
-              <b>Extras</b>
-              <Link className="link-acao" to="/extras">Ver todos <ChevronRight size={16} aria-hidden="true" /></Link>
             </div>
-            {dados.extras.length === 0 ? (
-              <p className="suave" style={{ margin: 0 }}>Nenhum extra neste mês.</p>
-            ) : (
-              <ul className="lista">
-                {dados.extras.map((i) => (
-                  <li key={i.id} className="linha">
-                    <span>{i.rotulo}</span>
-                    <span>{centavosParaReais(i.meu)}</span>
-                  </li>
-                ))}
-                <li className="linha total-linha">
-                  <span>Total</span>
-                  <span>{centavosParaReais(meuExtras)}</span>
-                </li>
-              </ul>
-            )}
-          </div>
+          ) : (
+            /* 4b. modo completo: números do mês e listas, cada seção se recolhe */
+            <>
+              <Secao
+                id="numeros"
+                titulo="Números do mês"
+                resumo={`${centavosParaReais(totalCartoes + dados.encargos)} no cartão`}
+                aberta={abertas.numeros}
+                aoAlternar={alternarSecao}
+              >
+                <div className="metricas">
+                  <div className="metrica">
+                    <div className="rotulo">Vou pagar de cartão</div>
+                    <div className="numero">{centavosParaReais(totalCartoes + dados.encargos)}</div>
+                  </div>
+                  <div className="metrica">
+                    <div className="rotulo">Terceiros ainda me devem</div>
+                    <div className="numero">{centavosParaReais(dados.pendenteTerceiros)}</div>
+                  </div>
+                  <div className="metrica">
+                    <div className="rotulo">Encargos (juros e taxas)</div>
+                    <div className="numero">{centavosParaReais(dados.encargos)}</div>
+                  </div>
+                  <div className="metrica">
+                    <div className="rotulo">Parcelado nos meses seguintes</div>
+                    <div className="numero">{centavosParaReais(dados.parcelado)}</div>
+                  </div>
+                </div>
+              </Secao>
+
+              <Secao
+                id="fixos"
+                titulo="Gastos fixos"
+                resumo={centavosParaReais(meuFixos)}
+                aberta={abertas.fixos}
+                aoAlternar={alternarSecao}
+              >
+                {dados.fixos.length === 0 ? (
+                  <p className="suave" style={{ margin: 0 }}>Nenhum gasto fixo neste mês.</p>
+                ) : (
+                  <ul className="lista">
+                    {dados.fixos.map((i) => (
+                      <li key={i.id} className="linha">
+                        <span>{i.rotulo}</span>
+                        <span>{centavosParaReais(i.meu)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link className="link-acao" to={`/fixos?mes=${mesISO}`}>
+                  Ver todos <ChevronRight size={16} aria-hidden="true" />
+                </Link>
+              </Secao>
+
+              <Secao
+                id="cartoes"
+                titulo="Faturas dos cartões"
+                resumo={`${centavosParaReais(meuCartoes)} minha parte`}
+                aberta={abertas.cartoes}
+                aoAlternar={alternarSecao}
+              >
+                {dados.cartoes.length === 0 ? (
+                  <p className="suave" style={{ margin: 0 }}>Nenhuma fatura neste mês.</p>
+                ) : (
+                  <ul className="lista">
+                    {dados.cartoes.map((c) => (
+                      <li key={c.id} className="linha">
+                        <Link className="item-link" to={`/cartoes/${c.id}?mes=${mesISO}`}>
+                          <div className="item-texto">
+                            <div className="titulo">{c.rotulo}</div>
+                            <div className="detalhe">Fatura {centavosParaReais(c.total)}</div>
+                          </div>
+                          <span>{centavosParaReais(c.meu)}</span>
+                          <ChevronRight size={18} aria-hidden="true" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link className="link-acao" to="/cartoes">
+                  Ver cartões <ChevronRight size={16} aria-hidden="true" />
+                </Link>
+              </Secao>
+
+              <Secao
+                id="extras"
+                titulo="Extras"
+                resumo={centavosParaReais(meuExtras)}
+                aberta={abertas.extras}
+                aoAlternar={alternarSecao}
+              >
+                {dados.extras.length === 0 ? (
+                  <p className="suave" style={{ margin: 0 }}>Nenhum extra neste mês.</p>
+                ) : (
+                  <ul className="lista">
+                    {dados.extras.map((i) => (
+                      <li key={i.id} className="linha">
+                        <span>{i.rotulo}</span>
+                        <span>{centavosParaReais(i.meu)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link className="link-acao" to={`/extras?mes=${mesISO}`}>
+                  Ver todos <ChevronRight size={16} aria-hidden="true" />
+                </Link>
+              </Secao>
             </>
           )}
+
+          {/* atalhos para as outras áreas do dinheiro */}
+          <div className="atalhos">
+            <Link className="botao-secundario compacto" to="/receitas">Receitas</Link>
+            <Link className="botao-secundario compacto" to="/orcamento">Orçamento</Link>
+            <Link className="botao-secundario compacto" to="/analises">Análises</Link>
+          </div>
         </>
       )}
     </section>
