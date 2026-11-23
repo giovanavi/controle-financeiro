@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import { DialogoProvider } from './components/Dialogo'
 import { ToastProvider } from './components/Toasts'
+import AtualizacaoApp from './components/AtualizacaoApp'
 import './ux.css' // por último, para prevalecer sobre os outros estilos
 
 createRoot(document.getElementById('root')).render(
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')).render(
       <DialogoProvider>
         <ToastProvider>
           <App />
+          <AtualizacaoApp />
         </ToastProvider>
       </DialogoProvider>
     </BrowserRouter>

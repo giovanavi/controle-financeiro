@@ -1,0 +1,11 @@
+{
+  // O "name" precisa ser IGUAL ao nome do projeto criado no painel da Cloudflare
+  "name": "controle-financeiro",
+  "compatibility_date": "2026-11-18",
+  "assets": {
+    // pasta gerada por `npm run build`
+    "directory": "./dist",
+    // qualquer endereço do app (/cartoes, /resumo...) abre o index.html, sem erro ao recarregar
+    "not_found_handling": "single-page-application"
+  }
+}
